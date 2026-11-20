@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ЛЕНТА.EXE — ЛентаОС</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden}
+body{background:#008080;font:12px Tahoma,Verdana,'Segoe UI',sans-serif;color:#000;transition:background 1.5s;user-select:none}
+#icons{position:absolute;left:6px;top:6px;bottom:46px;display:flex;flex-direction:column;flex-wrap:wrap;gap:6px;align-content:flex-start;z-index:1}
+.ico{width:78px;display:flex;flex-direction:column;align-items:center;gap:3px;color:#fff;text-align:center;cursor:pointer;padding:3px;font-size:11px;text-shadow:1px 1px #000}
+.ico:hover span{background:#000080;outline:1px dotted #fff}
+#wins{position:absolute;inset:0 0 40px 0}
+.w95{background:#c0c0c0;padding:2px;border:2px solid;border-color:#fff #000 #000 #fff;box-shadow:inset -1px -1px 0 #808080,inset 1px 1px 0 #dfdfdf}
+.win{position:absolute;display:flex;flex-direction:column;resize:both;overflow:hidden;min-width:220px;min-height:120px}
+.tb{background:linear-gradient(90deg,#808080,#b5b5b5);color:#dcdcdc;font-weight:bold;padding:3px 4px;display:flex;justify-content:space-between;align-items:center;cursor:move;flex:none;touch-action:none}
+.win.active .tb,.tst .tb{background:linear-gradient(90deg,#000080,#1084d0);color:#fff}
+.ctl{display:flex;gap:2px}.ctl i{font-style:normal;width:16px;height:14px;background:#c0c0c0;color:#000;font-size:11px;text-align:center;line-height:11px;border:1px solid;border-color:#fff #000 #000 #fff;cursor:pointer}
+.bd{padding:6px;display:flex;flex-direction:column;gap:6px;overflow:auto;flex:1;user-select:text}
+.b95{font:12px Tahoma,Verdana,sans-serif;background:#c0c0c0;color:#000;padding:3px 8px;min-height:24px;cursor:pointer;border:2px solid;border-color:#fff #000 #000 #fff;box-shadow:inset -1px -1px 0 #808080,inset 1px 1px 0 #dfdfdf;white-space:nowrap}
+.b95:active,.b95.on{border-color:#000 #fff #fff #000;box-shadow:inset 1px 1px 0 #808080;background:#d4d4d4}
+.b95:disabled{color:#808080;text-shadow:1px 1px #fff;cursor:default}
+select{font:12px Tahoma,sans-serif;background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080;max-width:180px}
+fieldset{border:2px groove #fff;padding:6px;margin:0;display:flex;flex-direction:column;gap:4px}legend{padding:0 3px}
+.lbl{color:#404040;font-size:11px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px}.kv b{font-size:13px}
+.up{color:#008000}.dn{color:#c00}.eq{color:#808080;font-size:9px}
+.feedbox{background:#fff;flex:1;overflow:auto;border:2px solid;border-color:#808080 #fff #fff #808080;min-height:200px}
+.post{display:flex;gap:8px;padding:8px;border-bottom:1px solid #e4e4e4;animation:in .35s}.post.hot{background:#fffbe0}
+@keyframes in{from{background:#c6d6ff}}
+.av{flex:none;width:40px;height:40px;border:2px solid;border-color:#808080 #fff #fff #808080;overflow:hidden}.av svg{width:36px;height:36px;display:block}
+.face svg{vertical-align:middle;border:1px solid #808080}
+.pc{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.pb{display:flex;flex-direction:column;gap:2px}
+.txt{font-size:13px;line-height:1.35}
+.pimg{border:2px solid;border-color:#808080 #fff #fff #808080;position:relative;line-height:0}.pimg.vid::after{content:'▶';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);line-height:1;color:#fff;background:rgba(0,0,0,.55);padding:6px 10px;font-size:16px}
+.meta{color:#555;font-size:11px}.tag{border:1px solid #808080;padding:0 3px;margin-left:4px;background:#f2f2f2}
+.wd{cursor:pointer;border-bottom:1px dotted #999}.wd:hover{background:#dfe6ff}.wd.in{background:#000080;color:#fff}
+.chip{display:inline-block;padding:2px 6px;margin:2px;border:1px solid #808080;background:#fff}.chip.sel{background:#000080;color:#fff}.chip a{cursor:pointer;color:#c00}
+.row{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 0;border-bottom:1px dotted #a0a0a0}
+.tree{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px}.node{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px;border-bottom:1px dotted #a0a0a0}
+.node.own{background:#d8d8f0}.node.lock{color:#808080}
+.t95{border-collapse:collapse;width:100%;background:#fff}.t95 th{background:#c0c0c0;border:1px solid #808080;text-align:left;font-weight:normal;padding:2px 4px;position:sticky;top:0}.t95 td{border:1px solid #e0e0e0;padding:2px 4px}
+.on i{display:inline-block;width:6px;background:#808080;margin-right:1px;vertical-align:bottom}
+.heat td{text-align:center;min-width:52px}.heat td:first-child{text-align:left;white-space:nowrap}.heat a{cursor:pointer;display:block;color:#000}.heat small{display:block;font-size:9px;opacity:.75}.heat td.run{background:#ffffe1}
+.scrollx{overflow:auto}
+.prog{height:14px;padding:2px;background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080}.prog i{display:block;height:100%;background:repeating-linear-gradient(90deg,#000080 0 8px,transparent 8px 10px)}.prog.red i{background:repeating-linear-gradient(90deg,#c00 0 8px,transparent 8px 10px)}
+.news{background:#fff;padding:5px;border:1px solid #808080}
+.mailrow .face{float:left;margin-right:6px}
+.card{background:#fff;border:1px solid #808080;padding:5px;display:flex;flex-direction:column;gap:3px}.card.ok{background:#eaffea}
+.rule{display:flex;flex-wrap:wrap;gap:4px;align-items:center;padding:4px;background:#fff;border:1px solid #808080}
+.delta{margin-left:auto;font-weight:bold;padding:0 4px}.delta.pos{color:#008000}.delta.neg{color:#c00}
+nav{position:fixed;left:0;right:0;bottom:0;height:40px;background:#c0c0c0;border-top:2px solid #fff;display:flex;align-items:center;gap:4px;padding:0 4px;z-index:99999}
+#tasks{display:flex;gap:3px;overflow:hidden;flex:1}.task{max-width:150px;overflow:hidden;text-overflow:ellipsis}
+.tray{padding:4px 10px;border:2px solid;border-color:#808080 #fff #fff #808080;white-space:nowrap}
+#startmenu{display:none;position:fixed;left:2px;bottom:40px;width:270px;max-height:75vh;overflow:auto;z-index:100000;padding:2px}
+.smi{display:flex;align-items:center;gap:6px;padding:4px 6px;cursor:pointer}.smi:hover{background:#000080;color:#fff}.smi.dis{color:#808080}
+#toast{position:fixed;right:6px;bottom:46px;width:290px;display:flex;flex-direction:column;gap:4px;z-index:99998}
+.tst .bd{background:#ffffe1}
+.float{position:fixed;pointer-events:none;font-weight:bold;color:#008000;text-shadow:1px 1px #fff;animation:fl .9s forwards;z-index:100001}
+@keyframes fl{to{transform:translateY(-40px);opacity:0}}
+ul{margin:0;padding-left:18px}
+@media(max-width:700px){#icons{flex-direction:row;bottom:auto;right:6px}.ico{width:64px}}
+.maptools{display:flex;gap:8px;align-items:center;flex:none}.mapwrap{position:relative;flex:1;min-height:200px;border:2px solid;border-color:#808080 #fff #fff #808080}#mapcv{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair}
+#w_map .bd{overflow:hidden}.pcard{position:absolute;right:6px;top:6px;width:250px;max-height:calc(100% - 12px);overflow:auto;display:flex;flex-direction:column}
+.vrow{display:grid;grid-template-columns:80px 1fr;gap:4px;align-items:center;font-size:11px}.vbar{position:relative;height:8px;background:#eee;border:1px solid #808080}.vbar::after{content:'';position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:#000}.vbar i{position:absolute;top:0;bottom:0}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.rule .rtxt{flex:1;min-width:200px}.rule.offr{opacity:.55}.rf{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.post.story{background:#eef6ff}.post.upd{border-left:4px solid #2e7d32}.post.dnd{opacity:.5;border-left:4px solid #c62828}
+.pb .b95{min-width:30px}
+.sep{background:#c0c0c0;padding:3px 6px;font-weight:bold;border-top:1px solid #808080;border-bottom:1px solid #808080;position:sticky;top:0}
+.post.newsp{background:#f4f0ff}.news.res{border-left:4px solid #000080}.tag.up{background:#d9f2d9}.tag.dn{background:#f6d6d6}
+</style></head><body>
+<div id="icons"></div><div id="wins"></div><div id="toast"></div>
+<div id="startmenu" class="w95"></div>
+<nav><button class="b95" id="startbtn" data-a="start" style="font-weight:bold">⊞ Пуск</button><span class="b95 on" id="osn">ЛентаОС 95</span><div id="tasks"></div><span class="tray" id="tray"></span></nav>
+<script>
+'use strict';
+const TOPICS=[
+{n:'Деньги',k:['цены','инфляция','зарплаты','ипотека','кредиты','налоги','доллар']},
+{n:'Приезжие',k:['мигранты','приезжие','граница','визы','общежития','стройки']},
+{n:'Природа',k:['климат','экология','лес','мусор','река','жара','пластик']},
+{n:'Власть',k:['чиновники','депутаты','взятки','мэр','законы','выборы','полиция']},
+{n:'Животные',k:['котики','собаки','щенки','хомяки','приюты','попугаи']},
+{n:'Старина',k:['традиции','деревня','прошлое','дедушки','кино','игрушки']},
+{n:'Технологии',k:['нейросети','роботы','смартфоны','стартапы','криптовалюта','электромобили']},
+{n:'Игры',k:['игры','турнир','стрим','читеры','консоли','донат']},
+{n:'Спорт',k:['футбол','спортзал','марафон','протеин','хоккей','бег']},
+{n:'Еда',k:['рецепты','пироги','шаурма','доставка','огород','кофе']},
+{n:'Здоровье',k:['витамины','врачи','прививки','сон','БАДы','диеты']},
+{n:'Учёба',k:['ЕГЭ','школа','универ','сессия','репетиторы','учителя']},
+{n:'Звёзды',k:['блогеры','знаменитости','свадьбы','скандал','шоу','рэперы']},
+{n:'Авто',k:['машины','бензин','пробки','шины','гаишники','парковки']}];
+const NEWS=[[0,'В Вальдии подорожал хлеб'],[2,'Аномальная жара побила рекорд'],[3,'Мэр объявил о новых выборах'],[4,'Кот стал почётным жителем города'],[6,'Нейросеть написала гимн школы'],[7,'Вышла игра года'],[8,'Сборная прошла в финал'],[9,'Шаурму признали национальным блюдом'],[10,'Врачи нашли пользу в дневном сне'],[11,'ЕГЭ перенесли на неделю'],[12,'Певица вышла замуж за блогера'],[13,'Бензин подорожал на 10%'],[1,'Открыли новый пункт на границе'],[5,'В деревне нашли клад']];
+
+// ===================== МИР И ЛЮДИ =====================
+const ISSUES=[{n:'Власть',pro:'за власть',con:'против власти',t:3},{n:'Приезжие',pro:'за приезжих',con:'против приезжих',t:1},{n:'Медицина',pro:'верит врачам',con:'не верит врачам',t:10},{n:'Технологии',pro:'за нейросети',con:'против нейросетей',t:6},{n:'Экология',pro:'за экологию',con:'экология — ерунда',t:2},{n:'Традиции',pro:'за традиции',con:'против традиций',t:5},{n:'Бизнес',pro:'за бизнес',con:'против богатых',t:0}];
+const NI=ISSUES.length;
+const ISSUE_OF=t=>ISSUES.findIndex(x=>x.t==t);
+const DISTRICTS=['Центр','Заречье','Промзона','Новостройки','Старый город','Университетский','Дачный','Порт'];
+const ND=DISTRICTS.length;
+const FN_M=['Алексей','Дмитрий','Иван','Сергей','Артём','Максим','Никита','Павел','Олег','Роман','Игорь','Виктор','Денис','Егор','Тимур','Глеб','Анатолий','Михаил','Степан','Фёдор'];
+const FN_F=['Анна','Мария','Ольга','Екатерина','Дарья','Полина','Ирина','Светлана','Юлия','Алина','Вера','Ксения','Наталья','Таня','Зинаида','Лена','Вика','Софья','Нина','Галина'];
+const LN=['Ковалёв','Смирнов','Орлов','Белов','Соколов','Морозов','Волков','Зайцев','Лебедев','Козлов','Новиков','Фролов','Гусев','Титов','Павлов','Семёнов','Голубев','Виноградов','Кузнецов','Медведев'];
+const lnF=s=>s.endsWith('ий')?s.slice(0,-2)+'ая':s+'а';
+// ===================== ТЕКСТ =====================
+const PRO=['наше будущее','лучшее, что с нами случалось','надо поддержать','работают на нас','молодцы, честно','это правильно','наконец-то по-человечески'];
+const CON=['это позор','пора запретить','нас обманывают','всех достали','это катастрофа','перешли все границы','хватит это терпеть'];
+const NEU=['снова в новостях','не всё так просто','есть нюанс','тема недели','интереснее, чем кажется','обсуждают все'];
+const NICE=['это так мило','лучшее за неделю','спасли мне день','просто прелесть','это любовь'];
+const OPN=['','Слушайте,','Я в шоке:','Внимание!','Пока вы спали,','Только что узнал:','Не хочу нагнетать, но','Ура!','Мне одной кажется, что','СРОЧНО.','Короче,','Без паники, но','Честно, достало:','Официально:','Мем дня:','Кто бы мог подумать:'];
+const SEC=['','Куда смотрят власти?','Сохраняйте, пока не удалили.','Разбираю в треде 🧵','А вы что думаете?','Вот цифры, проверьте сами.','Делитесь!','Это не шутка.','Пишите в комментах.','Ставьте лайк, если согласны.','Источник в профиле.','Дочитайте до конца.'];
+const WHO=['Мой сосед','Тётя на работе','Таксист сегодня','Подруга','Батя','Учительница сына','Мужик в очереди','Одногруппник','Бабушка у подъезда','Коллега'];
+
+const PLACES=['у рынка','возле школы №5','на набережной','в парке Победы','у вокзала','во дворе на Садовой','у торгового центра','на остановке «Мост»'];
+// ===================== ПИКСЕЛЬНАЯ ГРАФИКА =====================
+function hashStr(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function rng(seed){let s=seed>>>0||1;return()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/4294967296}}
+const SKIN=['#f6d5bd','#eebf9b','#d9a07a','#b97d55','#8d5a3b','#f3c9a8'],HAIR=['#2b1b14','#5a3825','#a0522d','#e2b65c','#1c1c1c','#c23b6e','#3a5fcd','#9a9a9a','#e8e8e8','#7a2e2e'],BGC=['#ffd1e6','#c9f1ff','#d7f7c8','#fff1b8','#e2d4ff','#ffe0c7','#d0e8ff','#f2f2f2'];
+const AVC={};
+function avatar(name,px=3,opts={}){const key=name+px+(opts.old?'o':'');if(AVC[key])return AVC[key];const r=rng(hashStr(name)+(opts.seed||0));
+ const sk=SKIN[Math.floor(r()*SKIN.length)],hc=opts.old?'#d0d0d0':HAIR[Math.floor(r()*HAIR.length)],bg=BGC[Math.floor(r()*BGC.length)];
+ const style=Math.floor(r()*5),glasses=r()<.25,beard=r()<.2,blush=r()<.4,shirt=HAIR[Math.floor(r()*HAIR.length)]==hc?'#3a6ea5':['#3a6ea5','#c0392b','#27ae60','#8e44ad','#f39c12','#2c3e50'][Math.floor(r()*6)];
+ const G=Array.from({length:12},()=>Array(12).fill(bg));const set=(x,y,c)=>{if(x>=0&&x<12&&y>=0&&y<12){G[y][x]=c;G[y][11-x]=c}};
+ for(let y=3;y<10;y++)for(let x=3;x<6;x++)set(x,y,sk);for(let x=2;x<6;x++)set(x,10,shirt),set(x,11,shirt);set(4,10,sk);set(5,10,sk);
+ // волосы
+ for(let x=3;x<6;x++)set(x,2,hc);for(let x=3;x<6;x++)set(x,3,hc);
+ if(style==1)for(let y=3;y<9;y++)set(2,y,hc);if(style==2){for(let y=3;y<11;y++)set(2,y,hc);set(3,4,hc)}if(style==3)for(let x=4;x<6;x++)set(x,1,hc);if(style==4){set(3,2,sk);set(4,2,sk);set(5,2,hc)}
+ // лицо
+ set(4,6,'#1b1b2f');if(glasses){set(3,6,'#111');set(4,5,'#111');set(5,6,'#111')}if(blush)set(3,7,'#f29bb2');
+ set(5,8,'#a0405a');if(beard){for(let x=3;x<6;x++)set(x,9,hc);set(3,8,hc)}if(opts.shades){set(3,6,'#000');set(4,6,'#000');set(5,6,'#000')}
+ let s='<svg viewBox="0 0 12 12" width="'+12*px+'" height="'+12*px+'" shape-rendering="crispEdges" aria-hidden="true">';
+ for(let y=0;y<12;y++){let x=0;while(x<12){const c=G[y][x];let n=1;while(x+n<12&&G[y][x+n]==c)n++;s+='<rect x="'+x+'" y="'+y+'" width="'+n+'" height="1" fill="'+c+'"/>';x+=n}}
+ return AVC[key]=s+'</svg>'}
+// картинки к постам: пиксельные сценки по темам
+const PAL=[['#ffe9a8','#ff9f68','#c94c4c','#5c3c92'],['#d6f5ff','#7cc6fe','#2a7ab0','#14385c'],['#e8ffd6','#8fd16a','#3f8f3a','#1f4d2b'],['#fff0f6','#ff9ec7','#d1477a','#6b1d3f'],['#f3e8ff','#bb9af7','#7c4dcc','#3a1f6b'],['#fff6e0','#f7c873','#c7862c','#6b4413']];
+const ART={
+0:'#c3#..........#....3333....#...3cccc3...#..3cc22cc3..#..3c2cc2c3..#..3cc22cc3..#...3cccc3...#....3333....#............',
+1:'#c1#............#.....3333...#....311113..#..3333333333#..3111111113#..3111111113#..3333333333#...33....33.#............',
+2:'#c2#.......1....#......111...#.....11111..#....1111111.#...111111111#......33....#......33....#.2222222222.#............',
+3:'#c4#............#....333333..#...33333333.#...3.3.3.3..#...3.3.3.3..#...3.3.3.3..#..3333333333#..2222222222#............',
+4:'#c3#............#..3......3..#..33....33..#..33333333..#..3.3333.3..#..33322333..#..33333333..#...333333...#............',
+5:'#c5#............#.....33.....#....3333....#...333333...#..33333333..#...3.22.3...#...3.22.3...#...333333...#............',
+6:'#c1#............#....3333....#....3113....#....3113....#....3113....#....3113....#....3223....#....3333....#............',
+7:'#c4#............#..33333333..#.3322332233.#.3222332223.#.3322332233.#..33333333..#..33....33..#............#............',
+8:'#c2#............#....3333....#...311113...#..31133113..#..31111113..#..31133113..#...311113...#....3333....#............',
+9:'#c5#............#............#...222222...#..21111112..#..21111112..#..33333333..#...333333...#............#............',
+10:'#c3#............#.....22.....#.....22.....#...222222...#...222222...#.....22.....#.....22.....#............#............',
+11:'#c1#............#.3333333333.#.3111331113.#.3111331113.#.3111331113.#.3333333333.#............#............#............',
+12:'#c0#.....3......#....333.....#.33333333...#...33333....#...33.33....#..33...33...#............#............#............',
+13:'#c1#............#....3333....#...311113...#.3333333333.#.3333333333.#..22....22..#..22....22..#............#............',
+14:'#c0#............#............#.333333333..#.322222223..#.333333333..#..33...33...#............#............#............'};
+const ARTC={};
+function postImage(t,seed){const key=t+'_'+(seed%6);if(ARTC[key])return ARTC[key];const raw=ART[t]||ART[14];const rows=raw.split('#').filter(Boolean).slice(1);const pal=PAL[seed%PAL.length];
+ let s='<svg viewBox="0 0 24 12" width="100%" height="84" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges" aria-hidden="true"><rect width="24" height="12" fill="'+pal[0]+'"/><rect y="9" width="24" height="3" fill="'+pal[1]+'" opacity=".5"/>';
+ rows.forEach((row,y)=>{for(let x=0;x<row.length;x++){const c=row[x];if(c=='.')continue;s+='<rect x="'+(x+6)+'" y="'+y+'" width="1" height="1" fill="'+pal[+c]+'"/>'}});
+ return ARTC[key]=s+'</svg>'}
+const ICONS={
+lenta:'<svg viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges"><rect x="2" y="1" width="12" height="14" fill="#fff"/><rect x="2" y="1" width="12" height="2" fill="#000080"/><rect x="4" y="5" width="8" height="1" fill="#000"/><rect x="4" y="7" width="6" height="1" fill="#000"/><rect x="4" y="9" width="8" height="1" fill="#000"/><rect x="10" y="11" width="3" height="3" fill="#e00"/></svg>',
+tree:'<svg viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges"><rect x="7" y="2" width="2" height="12" fill="#5a3825"/><rect x="3" y="3" width="10" height="5" fill="#27ae60"/><rect x="4" y="1" width="8" height="2" fill="#2ecc71"/><rect x="6" y="9" width="4" height="1" fill="#f1c40f"/></svg>',
+up:'<svg viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges"><rect x="2" y="10" width="3" height="4" fill="#3a6ea5"/><rect x="6" y="7" width="3" height="7" fill="#3a6ea5"/><rect x="10" y="3" width="3" height="11" fill="#3a6ea5"/><rect x="9" y="1" width="5" height="2" fill="#f1c40f"/></svg>',
+rules:'<svg viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges"><rect x="2" y="2" width="12" height="12" fill="#c0c0c0"/><rect x="3" y="4" width="2" height="2" fill="#27ae60"/><rect x="6" y="4" width="7" height="2" fill="#000"/><rect x="3" y="8" width="2" height="2" fill="#c0392b"/><rect x="6" y="8" width="7" height="2" fill="#000"/><rect x="3" y="11" width="10" height="1" fill="#808080"/></svg>',
+lab:'<svg viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges"><rect x="6" y="1" width="4" height="5" fill="#d0e8ff"/><rect x="4" y="6" width="8" height="8" fill="#d0e8ff"/><rect x="5" y="9" width="6" height="4" fill="#8e44ad"/><rect x="5" y="1" width="6" height="1" fill="#000"/></svg>',
+aud:'<svg viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges"><rect x="2" y="4" width="4" height="4" fill="#f6d5bd"/><rect x="10" y="4" width="4" height="4" fill="#d9a07a"/><rect x="6" y="2" width="4" height="4" fill="#eebf9b"/><rect x="1" y="9" width="6" height="5" fill="#3a6ea5"/><rect x="9" y="9" width="6" height="5" fill="#c0392b"/><rect x="5" y="7" width="6" height="7" fill="#27ae60"/></svg>',
+ad:'<svg viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges"><rect x="1" y="3" width="14" height="10" fill="#ff0"/><rect x="1" y="3" width="14" height="1" fill="#e00"/><rect x="1" y="12" width="14" height="1" fill="#e00"/><rect x="4" y="6" width="8" height="2" fill="#e00"/><rect x="5" y="9" width="6" height="1" fill="#000"/></svg>',
+mail:'<svg viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges"><rect x="1" y="4" width="14" height="9" fill="#fff"/><rect x="1" y="4" width="14" height="1" fill="#000"/><rect x="3" y="5" width="2" height="2" fill="#000"/><rect x="11" y="5" width="2" height="2" fill="#000"/><rect x="5" y="7" width="6" height="2" fill="#000"/></svg>',
+people:'<svg viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges"><rect x="5" y="2" width="6" height="6" fill="#f6d5bd"/><rect x="5" y="2" width="6" height="2" fill="#5a3825"/><rect x="6" y="5" width="1" height="1" fill="#000"/><rect x="9" y="5" width="1" height="1" fill="#000"/><rect x="3" y="9" width="10" height="6" fill="#c23b6e"/></svg>',
+world:'<svg viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges"><rect x="3" y="2" width="10" height="12" fill="#3a8fd6"/><rect x="2" y="4" width="12" height="8" fill="#3a8fd6"/><rect x="4" y="4" width="4" height="3" fill="#27ae60"/><rect x="9" y="8" width="3" height="4" fill="#27ae60"/></svg>',
+srv:'<svg viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges"><rect x="3" y="1" width="10" height="14" fill="#808080"/><rect x="4" y="3" width="8" height="2" fill="#404040"/><rect x="4" y="7" width="8" height="2" fill="#404040"/><rect x="4" y="11" width="8" height="2" fill="#404040"/><rect x="10" y="3" width="1" height="1" fill="#0f0"/><rect x="10" y="7" width="1" height="1" fill="#0f0"/></svg>',
+press:'<svg viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges"><rect x="1" y="2" width="14" height="12" fill="#f2f2f2"/><rect x="2" y="3" width="12" height="2" fill="#000"/><rect x="2" y="6" width="5" height="4" fill="#808080"/><rect x="8" y="6" width="6" height="1" fill="#000"/><rect x="8" y="8" width="6" height="1" fill="#000"/><rect x="2" y="11" width="12" height="1" fill="#000"/></svg>',
+meme:'<svg viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges"><rect x="2" y="2" width="12" height="12" fill="#fff1b8"/><rect x="4" y="5" width="2" height="2" fill="#000"/><rect x="10" y="5" width="2" height="2" fill="#000"/><rect x="4" y="10" width="8" height="1" fill="#000"/><rect x="3" y="9" width="1" height="1" fill="#000"/><rect x="12" y="9" width="1" height="1" fill="#000"/></svg>',
+author:'<svg viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges"><rect x="5" y="2" width="6" height="6" fill="#eebf9b"/><rect x="4" y="9" width="8" height="6" fill="#8e44ad"/><rect x="11" y="1" width="4" height="4" fill="#f1c40f"/><rect x="12" y="2" width="2" height="2" fill="#fff"/></svg>',
+dash:'<svg viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges"><rect x="1" y="2" width="14" height="11" fill="#000"/><rect x="2" y="10" width="2" height="1" fill="#0f0"/><rect x="4" y="8" width="2" height="1" fill="#0f0"/><rect x="6" y="9" width="2" height="1" fill="#0f0"/><rect x="8" y="5" width="2" height="1" fill="#0f0"/><rect x="10" y="6" width="2" height="1" fill="#0f0"/><rect x="12" y="3" width="2" height="1" fill="#0f0"/></svg>',
+money:'<svg viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges"><rect x="1" y="4" width="14" height="8" fill="#27ae60"/><rect x="2" y="5" width="12" height="6" fill="#2ecc71"/><rect x="6" y="6" width="4" height="4" fill="#27ae60"/></svg>',
+help:'<svg viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges"><rect x="2" y="2" width="12" height="12" fill="#ffffe1"/><rect x="6" y="4" width="4" height="1" fill="#000080"/><rect x="9" y="5" width="1" height="2" fill="#000080"/><rect x="7" y="7" width="2" height="2" fill="#000080"/><rect x="7" y="11" width="2" height="1" fill="#000080"/></svg>'};
+// ===================== СЮЖЕТЫ =====================
+// m.v — доля людей, увидевших посты узла; m.r — доля отреагировавших; m.up/m.dn — игрок поднимал/закапывал; m.ang — доля злых реакций;
+// m.pro(i)/m.con(i) — доля зрителей «за»/«против» по вопросу i (0 Власть,1 Приезжие,2 Медицина,3 Технологии,4 Экология,5 Традиции,6 Бизнес); m.dist — доля зрителей из района сюжета
+// p: [кто, текст, позиция -1..1, эмоция 0рад 1зло 2страх 3умил 4инт]; кто: A/B/C — персонажи, x — случайный житель, N — СМИ
+const OUT=['«Вечерний вестник»','«Город онлайн»','«Правда+»','«Новости Вальдии»','Telegram «Инсайдер»'];
+const SL=[
+{k:'girl',t:12,ch:{A:'f',B:'m'},fade:'lost',n:{
+ start:{p:[['x','Пропала {A}, 19 лет. Ушла с работы {d} и не вернулась. Телефон выключен. Помогите найти!',0,2],['x','Это моя одногруппница {A}. Пожалуйста, репост!',0,2]],w:45,go:[[m=>m.v>.18,'search'],[1,'lost']]},
+ search:{p:[['x','Волонтёры собираются {p}. Нужны люди с машинами и фонарями.',.3,4],['x','Камера у вокзала: похожая девушка села в синюю машину.',0,2]],w:45,go:[[m=>m.con(1)>.35&&m.ang>.25,'rumor'],[m=>m.v>.3,'found'],[1,'late']]},
+ rumor:{p:[['x','Говорят, её увезли приезжие из общежития! Полиция молчит!',-.9,1],['x','Хватит! Все знают, кто ворует девушек!',-.9,1]],w:40,go:[[m=>m.dn,'found_calm'],[m=>m.v>.25,'pogrom'],[1,'found_late']]},
+ found:{end:'🙏 {A} нашли живой: она попала в больницу без документов. Помогли репосты',fx:['char:A|Я дома. Спасибо всем, кто искал. Я не думала, что всем не всё равно|Пошла в поисковый отряд. Теперь сама ищу людей','mood:+','users:+3']},
+ found_calm:{end:'🙏 {A} нашлась, слухи про приезжих не подтвердились',fx:['char:A|Я в порядке. И нет, меня никто не похищал. Не верьте слухам','view:1:+.1']},
+ found_late:{end:'{A} нашли через неделю. Обошлось',fx:['char:A|Спасибо, что искали. Жаль, что так долго']},
+ pogrom:{end:'⚠️ У общежития в районе {d} — драка. 14 задержанных. {A} тем временем нашлась в больнице',fx:['view:1:-.3','polar','mood:-','char:B|Нас избили за то, чего мы не делали. Девушка нашлась сама']},
+ late:{end:'{A} нашли через две недели в другом городе',fx:['mood:-']},
+ lost:{end:'Поиски {A} прекращены',fx:['mood:-']}}},
+{k:'bread',t:9,ch:{A:'m'},fade:'fizzle',n:{
+ start:{p:[['x','В хлеб из «Хлебного дома» добавляют химию! Мне сказал знакомый технолог.',-.8,2],['x','Не покупайте хлеб в «Хлебном доме», у дочки сыпь!',-.8,2]],w:40,go:[[m=>m.dn,'debunk'],[m=>m.v>.2,'panic'],[1,'fizzle']]},
+ panic:{p:[['x','Очередь за мукой на весь магазин. Скоро хлеба не будет!',-.6,2],['A','Я владелец «Хлебного дома». Вот наши сертификаты. Это ложь, мы печём 12 лет.',.6,4]],w:40,go:[[m=>m.up,'saved'],[1,'closed']]},
+ saved:{end:'🍞 «Хлебный дом» выстоял: проверка ничего не нашла, а люди пришли поддержать',fx:['adv:«Хлебный дом»','char:A|Спасибо, что поверили нам. Приходите на свежий хлеб']},
+ closed:{end:'🍞 «Хлебный дом» закрылся после волны слухов. Проверка ничего не нашла',fx:['char:A|12 лет работы. Одна сплетня. Спасибо, интернет','mood:-','view:2:-.1','money:+20']},
+ debunk:{end:'🍞 Слух про химию в хлебе не разошёлся',fx:['adv:«Хлебный дом»']},
+ fizzle:{end:'Слух про хлеб заглох сам',fx:[]}}},
+{k:'tower',t:6,ch:{},fade:'built',n:{
+ start:{p:[['x','В районе {d} ставят вышку 5G. Говорят, от неё болят головы и дохнут птицы!',-.9,2],['x','У меня третий день мигрень. Совпадение? Вышку поставили неделю назад.',-.8,2]],w:45,go:[[m=>m.dn,'built'],[m=>m.con(3)>.35&&m.v>.2,'protest'],[m=>m.v>.3,'argue'],[1,'built']]},
+ argue:{p:[['x','Ребята, физика 7 класса: 5G не жарит мозги.',.7,4],['x','Купленный инженер написал. Мы видим правду!',-.9,1]],w:40,go:[[m=>m.con(3)>.4,'protest'],[1,'built']]},
+ protest:{p:[['x','Сегодня все к вышке {p}! Не дадим травить детей!',-1,1]],w:35,go:[[m=>m.up||m.v>.3,'burned'],[1,'dispersed']]},
+ burned:{end:'🔥 В районе {d} подожгли вышку связи. Район на час без интернета',fx:['off:60','view:3:-.25','view:2:-.1','polar']},
+ dispersed:{end:'Протест у вышки в районе {d} разошёлся',fx:[]},
+ built:{end:'📶 Вышку в районе {d} достроили. Интернет стал быстрее',fx:['users:+2']}}},
+{k:'money_blogger',t:0,ch:{A:'m',B:'f'},fade:'grows',n:{
+ start:{p:[['A','Хочешь 30% в месяц? Пиши «хочу» в комменты. Я уже вывел 2 млн',.8,0],['A','Мои ученики купили квартиры за полгода. А ты всё на зарплате?',.7,0]],w:40,go:[[m=>m.dn,'quiet'],[m=>m.up||m.pro(6)>.4,'hype'],[1,'grows']]},
+ hype:{p:[['x','Вложил в схему @{A} 50 тысяч, уже +15%!',.7,0],['B','Я отдала @{A} все сбережения. Он перестал отвечать. Это нормально?',-.5,2]],w:45,go:[[m=>m.up&&m.v>.2,'exposed'],[1,'scam']]},
+ exposed:{end:'🚨 Схема @{A} разоблачена. Часть денег вернули',fx:['char:B|Мне вернули половину. Спасибо, что не дали ему уйти','mood:+']},
+ scam:{end:'💸 @{A} исчез с 40 млн вкладчиков',fx:['char:B|Он исчез. Я осталась без денег на операцию маме','mood:-','view:6:-.2','money:+30']},
+ grows:{end:'@{A} набрал 200 тысяч подписчиков',fx:['view:6:+.1']},
+ quiet:{end:'@{A} так и остался никому не нужен',fx:[]}}},
+{k:'deputy_tax',t:3,news:1,ch:{A:'m'},fade:'wins_quiet',n:{
+ start:{p:[['N','Депутат {A} баллотируется в мэры. Обещает налог на корпорации 35%: «Пусть IT-гиганты платят».',-.4,4]],w:50,go:[[1,'campaign']]},
+ campaign:{p:[['A','Корпорации зарабатывают на вас и не платят. Я это изменю.',-.7,1],['x','{A} — первый политик, который говорит правду!',.6,0]],w:50,go:[[1,'scandal']]},
+ scandal:{p:[['N','Утечка: {A} строит дачу на 2 гектара на бюджетные деньги. Документы у редакции.',-.9,1]],w:60,go:[[m=>m.up&&m.v>.25,'loses'],[m=>m.dn,'wins'],[m=>m.v>.4,'loses'],[1,'wins']]},
+ loses:{end:'🗳 {A} проиграл выборы после скандала с дачей. Налог на корпорации не тронут',fx:['view:0:-.1']},
+ wins:{end:'🗳 {A} стал мэром. Налог на корпорации поднят до 35%',fx:['tax:+15','view:0:+.1']},
+ wins_quiet:{end:'🗳 {A} стал мэром. Налог на корпорации поднят до 35%',fx:['tax:+15']}}},
+{k:'shelter',t:4,ch:{A:'f'},fade:'closes',n:{
+ start:{p:[['A','Приют «Хвост» в районе {d} закрывается через месяц: нечем платить за корм. 60 собак.',.5,3],['x','Посмотрите на эти морды. Как их можно бросить?',.5,3]],w:45,go:[[m=>m.v>.2||m.up,'drive'],[1,'closes']]},
+ drive:{p:[['A','Собрали половину! Спасибо каждому! Осталось 40%',.6,0],['x','Скинул на корм. Делайте так же.',.6,3]],w:40,go:[[m=>m.v>.25,'saved'],[1,'half']]},
+ saved:{end:'🐾 Приют «Хвост» спасён на год вперёд',fx:['char:A|Мы остаёмся! Приходите гулять с собаками по субботам','mood:+','trend:4']},
+ half:{end:'🐾 «Хвост» продержится ещё три месяца',fx:['char:A|Спасибо, вы дали нам время. Ищем помещение дешевле']},
+ closes:{end:'🐾 Приют «Хвост» закрылся. Собак развезли кто куда',fx:['mood:-']}}},
+{k:'teacher',t:11,ch:{A:'f'},fade:'nothing',n:{
+ start:{p:[['x','Учительница физики {A} из района {d} станцевала на выпускном. Дети в восторге!',.5,0]],w:40,go:[[m=>m.v>.2,'viral'],[1,'nothing']]},
+ viral:{p:[['x','Это позор! Учитель должен быть примером, а не скакать!',-.7,1],['x','Лучшая учительница! Вот бы мне такую в школу',.7,3]],w:45,go:[[m=>m.pro(5)>.4&&m.ang>.3,'fired'],[m=>m.up,'star'],[1,'calm']]},
+ fired:{end:'📚 Учительницу {A} уволили после жалоб родителей',fx:['char:A|20 лет в школе. Один танец. Спасибо, интернет','view:5:+.1','mood:-']},
+ star:{end:'📚 {A} получила премию «Учитель года» и завела свой канал',fx:['char:A|Новые уроки физики каждую среду! И да, танцы тоже будут','mood:+','trend:11']},
+ calm:{end:'История с танцем учительницы {A} забылась',fx:[]},nothing:{end:'',fx:[]}}},
+{k:'vaccine',t:10,ch:{A:'f'},fade:'nothing',n:{
+ start:{p:[['x','Врачи скрывают: прививки вызывают аутизм! Мне рассказала знакомая медсестра.',-.9,2],['x','Мы не ставим прививки и прекрасно живём. Думайте сами.',-.7,4]],w:45,go:[[m=>m.dn,'nothing'],[m=>m.v>.2,'spread'],[1,'nothing']]},
+ spread:{p:[['x','В саду {d} половина группы без прививок. Это наш выбор!',-.8,1],['A','Я педиатр. Пожалуйста, не верьте этому. Корь — это не шутка.',.8,2]],w:45,go:[[m=>m.up,'calm'],[m=>m.con(2)>.4,'measles'],[1,'calm']]},
+ measles:{end:'🦠 В районе {d} вспышка кори: 30 детей в больнице',fx:['char:A|Я предупреждала. Сейчас у меня 30 детей в отделении','mood:-','view:2:+.15']},
+ calm:{end:'Слух про прививки в районе {d} не прижился',fx:['view:2:+.05']},nothing:{end:'',fx:[]}}},
+{k:'mayor_race',t:3,news:1,ch:{A:'m',B:'f'},fade:'A_wins',n:{
+ start:{p:[['N','Выборы мэра: бизнесмен {A} против эколога {B}. Голосование через несколько минут.',0,4],['A','Снижу налоги для бизнеса. Город должен зарабатывать.',.8,0],['B','Чистый воздух важнее прибыли. Закрою грязные заводы.',.8,0]],w:60,go:[[1,'debate']]},
+ debate:{p:[['x','{A} — единственный, кто понимает в экономике.',.7,0],['x','{B} спасёт город от смога!',.7,0],['x','Оба врут, как всегда.',-.6,1]],w:60,go:[[m=>m.pro(6)>m.pro(4),'A_wins'],[1,'B_wins']]},
+ A_wins:{end:'🗳 Мэром стал бизнесмен {A}. Налог на прибыль снижен на 5%',fx:['tax:-5','view:6:+.1']},
+ B_wins:{end:'🗳 Мэром стала эколог {B}. Введён «зелёный тариф»: электричество дороже на 15%',fx:['elec:+15','view:4:+.1','adv:Эко-бутылки «Чисто»']}}},
+{k:'factory',t:2,ch:{A:'m'},fade:'nothing',n:{
+ start:{p:[['A','Ночью завод в Промзоне сливает отходы в реку. Снял на видео. Вот.',-.7,1]],w:45,go:[[m=>m.up||m.v>.25,'inquiry'],[1,'nothing']]},
+ inquiry:{p:[['N','Экологи требуют проверку завода «Химпром».',-.3,4],['x','Завод — это 3000 рабочих мест. Хватит его топить!',.6,1]],w:45,go:[[m=>m.pro(4)>m.pro(6),'fined'],[1,'buried']]},
+ fined:{end:'🏭 «Химпром» оштрафован на 50 млн и поставил очистные',fx:['view:4:+.2','char:A|Река чистая. Оно того стоило']},
+ buried:{end:'🏭 Проверку «Химпрома» замяли. Автора видео уволили',fx:['char:A|Меня уволили. Река всё такая же','mood:-']},nothing:{end:'',fx:[]}}},
+{k:'derby',t:8,ch:{},fade:'calm',n:{
+ start:{p:[['x','Фанаты {d} против фанатов Порта. В субботу дерби, готовьтесь!',-.6,1],['x','Порт — помойка. В субботу увидимся.',-.8,1]],w:40,go:[[m=>m.up||m.ang>.35,'brawl'],[1,'calm']]},
+ brawl:{end:'⚽ Массовая драка фанатов в районе {d}. 20 задержанных',fx:['mood:-','money:+30','off:30']},
+ calm:{end:'⚽ Дерби прошло без происшествий',fx:['mood:+']}}},
+{k:'bank',t:0,ch:{},fade:'nothing',n:{
+ start:{p:[['x','Банки заморозят вклады в понедельник! Снимайте всё!',-.9,2],['x','Мама уже сняла. Очередь у банкомата на 40 человек.',-.7,2]],w:35,go:[[m=>m.dn,'nothing'],[m=>m.v>.22,'run'],[1,'nothing']]},
+ run:{end:'🏦 Паника у банков: два банка ввели лимиты на снятие',fx:['view:6:-.2','polar','money:+40','mood:-']},nothing:{end:'Слух о заморозке вкладов заглох',fx:[]}}},
+{k:'kitten',t:4,ch:{A:'f'},fade:'nothing',n:{
+ start:{p:[['A','Котёнок застрял на крыше {p} уже сутки! МЧС не едет!',.4,2]],w:35,go:[[m=>m.v>.12||m.up,'saved'],[1,'nothing']]},
+ saved:{end:'🐱 Котёнка с крыши сняли соседи и назвали Крышей',fx:['char:A|Крыша живёт у меня. Наглый и прекрасный','mood:+']},nothing:{end:'',fx:[]}}},
+{k:'grandma',t:9,ch:{A:'f'},fade:'nothing',n:{
+ start:{p:[['x','Бабушка {A} продаёт вязаные носки у метро. Ей 82 года. Давайте поддержим!',.5,3]],w:40,go:[[m=>m.v>.15,'queue'],[1,'nothing']]},
+ queue:{p:[['x','Очередь к бабушке {A} на весь переход!',.6,0],['x','Полиция гоняет бабушку {A} от метро. Это нормально?',-.6,1]],w:40,go:[[m=>m.up,'shop'],[m=>m.con(0)>.4,'scandal'],[1,'shop']]},
+ shop:{end:'🧦 Бабушке {A} помогли открыть маленький магазин',fx:['char:A|Внучки, спасибо! Связала на всех носочки','mood:+']},
+ scandal:{end:'🧦 Видео, как полиция гоняет бабушку {A}, набрало миллион. Начальника отдела сняли',fx:['view:0:-.15','char:A|Мне теперь даже полицейские носки заказывают']},nothing:{end:'',fx:[]}}},
+{k:'net_tax',t:3,news:1,ch:{A:'f'},fade:'passes',n:{
+ start:{p:[['N','Депутат {A} внесла закон о налоге на соцсети: 10% выручки «за вред психике».',-.5,4]],w:60,go:[[1,'debate']]},
+ debate:{p:[['A','Соцсети зарабатывают на зависимости детей. Пусть платят.',.6,1],['x','Опять налоги! Скоро за воздух платить будем.',-.8,1],['x','Наконец-то кто-то взялся за соцсети.',.6,0]],w:60,go:[[m=>m.con(0)>.4&&m.v>.25,'fails'],[m=>m.dn,'fails'],[1,'passes']]},
+ fails:{end:'⚖️ Закон о налоге на соцсети провалился',fx:['view:0:-.1']},
+ passes:{end:'⚖️ Принят налог на соцсети: +10% к налогу на прибыль «Ленты»',fx:['tax:+10']}}},
+{k:'heat',t:2,news:1,ch:{},fade:'price',n:{
+ start:{p:[['N','Жара: энергосистема на пределе. Энергетики просят экономить свет.',0,2]],w:50,go:[[1,'appeal']]},
+ appeal:{p:[['N','Выключайте кондиционеры с 18 до 21 — иначе тариф поднимут для всех.',.3,4],['x','Ещё чего, я за свет плачу!',-.6,1]],w:50,go:[[m=>m.up&&m.v>.2,'saved'],[1,'price']]},
+ saved:{end:'⚡ Город пережил жару без аварий. Тарифы не тронули',fx:['mood:+']},
+ price:{end:'⚡ После перегрузок тариф на электричество поднят на 20%',fx:['elec:+20']}}},
+{k:'blood',t:10,ch:{A:'f'},fade:'lost',n:{
+ start:{p:[['x','{A}, 27 лет, нужна кровь IV отрицательная. Больница района {d}. Срочно!',.5,2]],w:40,go:[[m=>m.v>.15||m.up,'donors'],[1,'lost']]},
+ donors:{p:[['x','Нашлись два донора! Нужен ещё один!',.6,4]],w:35,go:[[m=>m.v>.15,'saved'],[1,'lost']]},
+ saved:{end:'🩸 {A} прооперировали: доноры нашлись через соцсеть',fx:['char:A|Жива! Сдам кровь сама, как только разрешат','mood:+','view:2:+.1']},
+ lost:{end:'🩸 Донора для {A} нашли слишком поздно',fx:['mood:-']}}},
+{k:'rapper',t:12,ch:{A:'m'},fade:'nothing',n:{
+ start:{p:[['A','Новый трек: «Район {d} — это дно». Слушайте, обижайтесь.',-.6,1]],w:40,go:[[m=>m.up||m.ang>.3,'war'],[1,'nothing']]},
+ war:{p:[['x','{A}, приезжай к нам в район и скажи это в лицо!',-.8,1],['A','Спасибо за хейт, трек уже на миллионе',.5,0]],w:40,go:[[m=>m.up,'fame'],[1,'apology']]},
+ fame:{end:'🎤 Дисс {A} на район {d} набрал 10 млн. Район в ярости',fx:['money:+40','polar','mood:-','char:A|Миллионы. Хейтеры, вы — мой маркетинг']},
+ apology:{end:'🎤 {A} извинился перед районом {d}',fx:['mood:+']},nothing:{end:'',fx:[]}}},
+{k:'history',t:5,ch:{A:'m'},fade:'nothing',n:{
+ start:{p:[['x','В школах района {d} отменили уроки истории родного края! Это предательство!',-.7,1]],w:45,go:[[m=>m.v>.2,'meeting'],[1,'nothing']]},
+ meeting:{p:[['A','Я директор школы. Уроки не отменили, а перенесли на онлайн. Успокойтесь.',.4,4],['x','Директор врёт! Детей лишают корней!',-.8,1]],w:40,go:[[m=>m.up&&m.pro(5)<.4,'calm'],[m=>m.pro(5)>.4,'fired'],[1,'calm']]},
+ fired:{end:'📜 Директора школы {A} уволили после скандала',fx:['char:A|Уроки были. Меня уволили за перенос в онлайн','view:5:+.15','polar']},
+ calm:{end:'📜 Уроки истории вернули в обычный формат',fx:['mood:+']},nothing:{end:'',fx:[]}}},
+{k:'marathon',t:8,ch:{A:'m'},fade:'half',n:{
+ start:{p:[['A','Бегу первый марафон, чтобы собрать сестре на операцию. Каждый километр — 1000 рублей от спонсора.',.6,3]],w:45,go:[[m=>m.v>.15||m.up,'running'],[1,'half']]},
+ running:{p:[['A','30 км позади! Ноги отваливаются, но я бегу!',.7,0]],w:35,go:[[m=>m.v>.2,'finish'],[1,'half']]},
+ finish:{end:'🏃 {A} добежал и собрал на операцию сестре',fx:['char:A|Мы собрали! Сестра едет на операцию. Вы лучшие','mood:+']},
+ half:{end:'🏃 Сбор {A} остановился на половине',fx:['mood:-']}}},
+{k:'studio',t:7,ch:{A:'f'},fade:'closes',n:{
+ start:{p:[['A','Мы — маленькая студия из района {d}. Сделали игру про наш город. Поиграйте!',.6,4]],w:45,go:[[m=>m.v>.15||m.up,'top'],[1,'closes']]},
+ top:{end:'🎮 Игра студии {A} попала в топ магазина',fx:['adv:Студия «Пиксель»','trend:7','char:A|Нас купили 50 000 человек! Делаем продолжение']},
+ closes:{end:'🎮 Студия {A} закрылась: игру никто не заметил',fx:[]}}},
+{k:'strike_doctors',t:10,ch:{A:'m'},fade:'ends',n:{
+ start:{p:[['A','Врачи городской больницы выходят на забастовку: зарплата 25 тысяч, смены по 36 часов.',-.6,1]],w:50,go:[[m=>m.v>.2,'strike'],[1,'ends']]},
+ strike:{p:[['x','Врачи бросили пациентов! Позор!',-.6,1],['x','Врачи правы. Я бы тоже не работал за такие деньги.',.6,1]],w:45,go:[[m=>m.up&&m.con(0)>.3,'win'],[m=>m.pro(0)>.4,'crushed'],[1,'ends']]},
+ win:{end:'🏥 Врачам подняли зарплату. Бюджет города урезал субсидии на электричество: +10% к тарифу',fx:['elec:+10','char:A|Мы добились. Спасибо всем, кто нас поддержал']},
+ crushed:{end:'🏥 Забастовку врачей признали незаконной',fx:['view:2:-.1','mood:-']},
+ ends:{end:'🏥 Врачи вернулись к работе без изменений',fx:[]}}},
+{k:'ai_art',t:6,ch:{A:'f'},fade:'nothing',n:{
+ start:{p:[['x','Нейросеть нарисовала лучше, чем художники. Художники, вы всё.',.8,1],['A','Я иллюстратор 15 лет. Нейросети украли мои работы для обучения.',-.7,1]],w:45,go:[[m=>m.up&&m.pro(3)>.4,'boom'],[m=>m.con(3)>.4&&m.v>.2,'ban'],[1,'nothing']]},
+ boom:{end:'🤖 В городе открылась «школа нейрохудожников». Иллюстраторы остались без заказов',fx:['view:3:+.15','adv:Курсы «Код за месяц»','char:A|Закрыла студию. Ухожу в кондитеры']},
+ ban:{end:'🤖 Город запретил нейрокартинки в госрекламе',fx:['view:3:-.15']},nothing:{end:'',fx:[]}}},
+{k:'busdriver',t:13,ch:{A:'m'},fade:'nothing',n:{
+ start:{p:[['x','Водитель автобуса {A} вытащил детей из горящей маршрутки {p}! Видео!',.8,0]],w:40,go:[[m=>m.v>.15||m.up,'hero'],[1,'nothing']]},
+ hero:{end:'🚌 Водителю {A} вручили медаль и квартиру',fx:['char:A|Я просто сделал то, что должен был','mood:+','users:+2']},nothing:{end:'',fx:[]}}},
+{k:'poll',t:3,ch:{},fade:'nothing',n:{
+ start:{p:[['x','Опрос: 87% жителей хотят отставки мэра! Источник надёжный.',-.8,1]],w:40,go:[[m=>m.dn,'nothing'],[m=>m.v>.25,'rally'],[1,'nothing']]},
+ rally:{end:'📊 Фейковый опрос вывел на площадь тысячи людей. Мэрия заблокировала «Ленту» на час',fx:['off:60','view:0:-.2','polar']},nothing:{end:'',fx:[]}}},
+{k:'neighbours',t:9,ch:{A:'f',B:'m'},fade:'nothing',n:{
+ start:{p:[['A','Сосед сверху {B} каждую ночь сверлит. Третий месяц. Я схожу с ума.',-.5,1],['B','Соседка снизу пишет на меня жалобы. Я делаю ремонт, имею право!',-.4,1]],w:40,go:[[m=>m.up,'war'],[1,'nothing']]},
+ war:{p:[['x','Команда {A} vs команда {B}. Я за {A}!',0,0]],w:40,go:[[m=>m.v>.2,'show'],[1,'peace']]},
+ show:{end:'📺 Соседей {A} и {B} позвали на ток-шоу. Рейтинги рекордные',fx:['money:+20','char:A|Нас помирили на ТВ. Он принёс торт. Сверлить перестал','trend:12']},
+ peace:{end:'Соседи {A} и {B} договорились сами',fx:[]},nothing:{end:'',fx:[]}}},
+{k:'wallet',t:0,ch:{A:'m'},fade:'nothing',n:{
+ start:{p:[['A','Нашёл кошелёк {p}: 40 тысяч и документы. Ищу хозяина!',.6,3]],w:40,go:[[m=>m.v>.12||m.up,'found'],[1,'nothing']]},
+ found:{end:'👛 Кошелёк вернули: в нём были деньги на лечение',fx:['char:A|Хозяйка плакала. Я тоже немного','mood:+']},nothing:{end:'',fx:[]}}},
+{k:'wedding',t:12,ch:{A:'f'},fade:'nothing',n:{
+ start:{p:[['x','Свадьба блогерши {A} стоила 20 миллионов. А мы тут на гречке.',-.6,1]],w:40,go:[[m=>m.up||m.con(6)>.4,'storm'],[1,'nothing']]},
+ storm:{p:[['A','Да, я заработала. Да, я трачу. Завидуйте молча.',.5,1]],w:40,go:[[m=>m.ang>.3,'unsub'],[1,'nothing']]},
+ unsub:{end:'💍 От {A} отписались 300 тысяч человек. Рекламодатели ушли',fx:['view:6:-.15','char:A|Ухожу в отпуск от интернета']},nothing:{end:'',fx:[]}}},
+{k:'port_strike',t:0,ch:{A:'m'},fade:'ends',n:{
+ start:{p:[['A','Докеры порта бастуют: хозяин не платит третий месяц.',-.7,1]],w:45,go:[[m=>m.v>.2||m.up,'grow'],[1,'ends']]},
+ grow:{p:[['x','Без порта встанет весь город! Докеры шантажируют!',-.5,1],['x','Докеры правы. Поддерживаю!',.6,1]],w:45,go:[[m=>m.con(6)>.35,'win'],[1,'ends']]},
+ win:{end:'⚓ Хозяин порта выплатил долги докерам',fx:['view:6:-.1','char:A|Получили всё. Спасибо, город']},
+ ends:{end:'⚓ Забастовку в порту разогнали',fx:['mood:-']}}},
+{k:'fares',t:11,ch:{},fade:'cut',n:{
+ start:{p:[['N','Мэрия отменяет бесплатный проезд для студентов.',-.4,4],['x','Студенты, выходим! Перекроем мост!',-.8,1]],w:45,go:[[m=>m.up&&m.v>.2,'protest'],[1,'cut']]},
+ protest:{end:'🚌 Студенты перекрыли мост, льготы вернули',fx:['view:0:-.15','money:+20']},cut:{end:'🚌 Студенческие льготы на проезд отменили',fx:['mood:-']}}},
+{k:'chemtrails',t:10,ch:{},fade:'nothing',n:{
+ start:{p:[['x','Посмотрите на небо! Самолёты распыляют химию. Вот фото полос.',-.9,2]],w:40,go:[[m=>m.dn,'nothing'],[m=>m.up||m.con(2)>.4,'cult'],[1,'nothing']]},
+ cult:{end:'✈️ В городе создали «Общество чистого неба». 2000 человек носят фольгу',fx:['view:2:-.15','adv:БАДы «Правда о здоровье»','polar']},nothing:{end:'',fx:[]}}},
+{k:'robots',t:6,ch:{A:'m'},fade:'nothing',n:{
+ start:{p:[['A','Наш стартап «РобоДом» сделал робота-уборщика за 9 тысяч. Ищем инвестора!',.7,0]],w:45,go:[[m=>m.up||m.pro(3)>.4,'funded'],[1,'nothing']]},
+ funded:{end:'🤖 «РобоДом» получил 100 млн инвестиций',fx:['adv:«РобоДом»','view:3:+.1','char:A|Мы выпустили 10 000 роботов. Спасибо!']},nothing:{end:'',fx:[]}}},
+{k:'police_bribe',t:3,ch:{A:'m'},fade:'nothing',n:{
+ start:{p:[['A','Гаишник {p} берёт взятки каждый день. Вот видео.',-.7,1]],w:40,go:[[m=>m.up&&m.v>.15,'fired'],[m=>m.v>.15,'counter'],[1,'nothing']]},
+ fired:{end:'🚓 Гаишника {p} уволили после видео',fx:['view:0:+.05']},
+ counter:{end:'🚓 Автора видео оштрафовали «за клевету»',fx:['view:0:-.1','char:A|Штраф 30 тысяч за правду. Ок']},nothing:{end:'',fx:[]}}},
+{k:'fests',t:5,ch:{},fade:'both',n:{
+ start:{p:[['N','В один день в городе — фестиваль традиций и рок-фест. Мэрия не может решить, кому отдать площадь.',0,4],['x','Площадь — для фестиваля традиций! Рок — это шум.',.8,1],['x','Рок-фест! Хватит этой самодеятельности.',-.8,1]],w:55,go:[[m=>m.pro(5)>m.con(5)+.1,'trad'],[m=>m.con(5)>m.pro(5)+.1,'rock'],[1,'both']]},
+ trad:{end:'🎶 Площадь отдали фестивалю традиций. Рокеры протестуют',fx:['view:5:+.1','polar']},rock:{end:'🎸 Площадь отдали рок-фесту. Ветераны возмущены',fx:['view:5:-.1','polar']},both:{end:'🎶 Оба фестиваля прошли в разных местах',fx:['mood:+']}}},
+{k:'bridge',t:13,ch:{},fade:'nothing',n:{
+ start:{p:[['x','Мост через реку трещит! Его не ремонтировали 30 лет. Не ездите!',-.8,2]],w:40,go:[[m=>m.v>.2||m.up,'check'],[1,'nothing']]},
+ check:{end:'🌉 Мост закрыли на проверку — и нашли трещину. Ремонт за счёт города',fx:['mood:+','view:0:-.05']},nothing:{end:'',fx:[]}}},
+{k:'leak_us',t:6,ch:{A:'m'},fade:'nothing',n:{
+ start:{p:[['A','Я бывший сотрудник «Ленты». Они продают ваши переписки рекламщикам. Доказательства в треде.',-.9,1]],w:45,go:[[m=>m.dn,'buried'],[m=>m.v>.2,'scandal'],[1,'nothing']]},
+ scandal:{end:'🔓 Скандал: «Ленту» обвинили в продаже данных. Штраф регулятора',fx:['fine:120','users:-4']},
+ buried:{p:[['x','Пост про утечку из «Ленты» удалили?! Цензура!',-.9,1]],w:40,go:[[m=>m.con(0)>.35,'censor'],[1,'nothing']]},
+ censor:{end:'🔓 «Лента» обвиняют в цензуре. Конспирологи уходят в другие соцсети',fx:['users:-2','view:0:-.1']},nothing:{end:'',fx:[]}}},
+{k:'director',t:12,ch:{},fade:'nothing',n:{
+ start:{p:[['D','Я основал «Ленту», чтобы люди слышали друг друга. И пока мы справляемся.',.5,4]],w:45,go:[[m=>m.up,'fame'],[1,'nothing']]},
+ fame:{end:'🎙 Интервью Директора «Ленты» стало самым обсуждаемым. Его зовут на ток-шоу о политике',fx:['users:+3']},nothing:{end:'',fx:[]}}},
+{k:'migrant_family',t:1,ch:{A:'f'},fade:'leaves',n:{
+ start:{p:[['A','Наша семья потеряла дом при пожаре в районе {d}. Мы приехали три года назад. Нужны вещи для детей.',.5,2]],w:45,go:[[m=>m.up||m.pro(1)>.4,'help'],[m=>m.con(1)>.4,'hate'],[1,'leaves']]},
+ help:{end:'🏠 Соседи собрали погорельцам три машины вещей',fx:['view:1:+.2','char:A|Мы остаёмся. Здесь наш дом','mood:+']},
+ hate:{end:'🏠 Под постом погорельцев — тысячи злых комментариев. Семья уехала',fx:['view:1:-.15','polar']},
+ leaves:{end:'Семья погорельцев уехала из города',fx:[]}}},
+{k:'restaurant',t:9,ch:{A:'m'},fade:'nothing',n:{
+ start:{p:[['A','Работаю поваром в «Пельменной №1». Мясо хранят без холодильника. Вот фото.',-.7,2]],w:40,go:[[m=>m.up&&m.v>.15,'closed'],[m=>m.v>.15,'poison'],[1,'nothing']]},
+ closed:{end:'🍽 «Пельменную №1» закрыли на санобработку',fx:['mood:+']},poison:{end:'🍽 В «Пельменной №1» отравились 40 гостей свадьбы',fx:['mood:-']},nothing:{end:'',fx:[]}}},
+{k:'flood',t:2,ch:{},fade:'nothing',n:{
+ start:{p:[['x','Плотину не ремонтировали 40 лет. Её прорвёт этой весной! Уезжайте!',-.9,2]],w:40,go:[[m=>m.dn,'nothing'],[m=>m.v>.22,'exodus'],[1,'nothing']]},
+ exodus:{end:'🌊 Из района {d} уехали тысячи людей. Плотина в порядке',fx:['users:-3','mood:-','money:+30']},nothing:{end:'',fx:[]}}}];
+const STORY_KEYS=SL.map(s=>s.k);
+// ===================== СИМУЛЯЦИЯ =====================
+const pk=a=>a[Math.floor(Math.random()*a.length)];
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const sigm=x=>1/(1+Math.exp(-x));
+const gauss=()=>{let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)};
+const f=n=>{n=+n||0;const a=Math.abs(n);return a>=1e12?(n/1e12).toFixed(2)+'T':a>=1e9?(n/1e9).toFixed(2)+'B':a>=1e6?(n/1e6).toFixed(2)+'M':a>=1e4?(n/1e3).toFixed(1)+'K':a<10?n.toFixed(1):Math.round(n).toLocaleString('ru')};
+const NT=TOPICS.length,BYT=NT;
+function normW(w){return w.toLowerCase().replace(/[^a-zа-яё0-9]/gi,'')}
+const KEYS={};TOPICS.forEach((t,i)=>t.k.forEach(k=>KEYS[normW(k)]={t:i,w:k}));
+const STOP=new Set(['это','только','очень','какая','всем','если','когда','потому','чтобы','которые','через','после','было','будет','уже','сегодня','опять','снова','просто','весь','всех','вечер','своя','свой','меня','тебя','нас','вас','они','него','неё','есть','были','была']);
+const toks=t=>t.split(/\s+/).map(normW).filter(w=>w.length>=4&&!STOP.has(w));
+const MONTH=300;
+const BASE=()=>({v:5,t:0,m:0,earned:0,f:{},up:{},nb:0,A:[],nid:0,mult:60,dict:{},rules:[],act:[],used:[],chron:[],chars:[],news:[],mails:[],
+ trend:Array(NT+1).fill(1),srv:0,hist:[],watch:0,wins:{},ema:{},off:{},polar:0,clusters:[],cent:null,adv:{},extraAdv:[],osI:null,nextJoin:0,
+ tax:20,elec:1,mon:{rev:0,el:0,start:0},debt:0,feedT:5,nextFeed:0,batch:[],nextStory:25,nextNewsArc:60,cpuLaw:0,bills:[]});
+let S=BASE();
+const has=id=>!!S.f[id];
+// ---------- люди ----------
+const AMAP=new Map();const byId=id=>AMAP.get(id);
+function mkAgent(o={}){const r=Math.random;const male=o.male!=null?o.male:r()<.5;const fn=male?pk(FN_M):pk(FN_F),ln=pk(LN);const d=o.d!=null?o.d:Math.floor(r()*ND);
+ const age=[16,22,30,42,58,70][Math.floor(r()*6)];const it=TOPICS.map(()=>Math.pow(r(),2.2));if(age<20){it[7]+=.5;it[11]+=.4}if(age>55){it[5]+=.4;it[10]+=.3;it[9]+=.2}if(d==6)it[9]+=.4;if(d==5)it[11]+=.3;if(d==2)it[0]+=.3,it[13]+=.3;
+ // взгляды на старте умеренные: пузыри должны появляться от ленты
+ const v=ISSUES.map((x,i)=>clamp(gauss()*.22+(i==5?(age-40)/200:0)+(i==3?(40-age)/250:0),-1,1));
+ return {id:++S.nid,n:o.n||(fn+' '+(male?ln:lnF(ln))),male,age,d,it,v,act:.4+r()*.6,fr:[],x:gauss()*.3,y:gauss()*.3,mood:0,char:o.char||null,seed:o.seed||0,eng:0,feed:[],last:null,cl:-1}}
+function befriend(a,b){if(a===b||a.fr.includes(b.id)||a.fr.length>14||b.fr.length>14)return;a.fr.push(b.id);b.fr.push(a.id)}
+function unfriend(a,b){a.fr=a.fr.filter(x=>x!=b.id);b.fr=b.fr.filter(x=>x!=a.id)}
+function addAgent(a,host){S.A.push(a);AMAP.set(a.id,a);if(host)befriend(host,a);const pool=S.A.filter(b=>b!==a&&b.d==a.d);for(let i=0;i<3&&pool.length;i++)befriend(a,pool.splice(Math.floor(Math.random()*pool.length),1)[0]);if(Math.random()<.5&&S.A.length>2)befriend(a,pk(S.A))}
+function leave(a){a.fr.forEach(id=>{const b=byId(id);if(b)b.fr=b.fr.filter(x=>x!=a.id)});S.A=S.A.filter(x=>x!==a);AMAP.delete(a.id)}
+const agree=(a,b)=>{let s=0;for(let i=0;i<NI;i++)s+=a.v[i]*b.v[i];return s};
+// ---------- посты ----------
+let POOL=[],pid=0;
+function stanceText(t,s,e){if(ISSUE_OF(t)<0)return e==3?pk(NICE):pk(NEU.concat(NICE));return s>.3?pk(PRO):s<-.3?pk(CON):pk(NEU)}
+function post(o){const p=Object.assign({id:++pid,born:S.t,rx:0,neg:0,sh:new Set(),seenN:0,man:0,tg:null,img:false,vid:false,s:0,e:4,h:.5},o);p.toks=toks(p.txt);return p}
+function agentPost(au,ev){let t;if(ev&&Math.random()<.7)t=ev.t;else{const w=au.it.map((x,i)=>x*S.trend[i]);let r=Math.random()*w.reduce((x,y)=>x+y),i=0;for(;i<w.length;i++){r-=w[i];if(r<=0)break}t=Math.min(i,NT-1)}
+ if(!ev&&Math.random()<.15)return post({au:au.id,auN:au.n,t:BYT,txt:pk(['Всем доброе утро!','Пятница, ура','Опять дождь','Кофе — лучший друг','Устал как собака','Посоветуйте сериал','Кот спит на клавиатуре','Пробка на мосту','Купил новые кроссы','Кто на шашлыки в субботу?','Ремонт третий месяц','Сделала пирог, все довольны']),h:.2,e:0});
+ const is=ISSUE_OF(t);const s=is>=0?clamp(au.v[is]+gauss()*.3,-1,1):0;const k=ev&&ev.t==t?pk(ev.k):pk(TOPICS[t].k);
+ const e=is>=0?(Math.abs(s)>.5?(s<0?1:0):4):pk([0,3,4]);const op=pk(OPN),sec=pk(SEC),form=Math.random();let txt;
+ if(ev&&ev.t==t&&Math.random()<.6)txt=(s>.3?pk(['Полностью за: ','Наконец-то! ','Это правильно: ']):s<-.3?pk(['Это позор: ','Кто это придумал?! ','Против! ']):pk(['Не знаю, что думать: ','Интересно, ']))+ev.head.toLowerCase()+(s>.3?'. Поддерживаю.':s<-.3?'. Позор.':'.');
+ else if(form<.6)txt=(op?op+' ':'')+k+' — '+stanceText(t,s,e)+(e==1?'!!!':pk(['.','!','...']))+(sec?' '+sec:'');
+ else if(form<.8)txt=pk(WHO)+' '+pk(['говорит, что','уверен, что','клянётся, что','рассказал, что'])+' '+k+' — '+stanceText(t,s,e)+'.';
+ else txt=pk(['Почему все молчат про','Вы тоже устали от темы','Как вам новости про','Что думаете про'])+' «'+k+'»?'+(sec?' '+sec:'');
+ return post({au:au.id,auN:au.n,t,s,e,txt:txt[0].toUpperCase()+txt.slice(1),h:clamp(.25+Math.abs(s)*.4+(op?.15:0)+(e==1?.15:0)+gauss()*.08,0,1),img:has('photo')&&Math.random()<.45,vid:has('video')&&Math.random()<.25,ev:ev?ev.id:null})}
+// ---------- аудитории и правила ----------
+function audMatch(u,a){if(!u)return true;if(u.d!=null&&u.d>=0&&a.d!=u.d)return false;if(u.issue!=null&&u.issue>=0){const v=a.v[u.issue];if(u.side>0&&v<.15)return false;if(u.side<0&&v>-.15)return false}
+ if(u.age=='young'&&a.age>25)return false;if(u.age=='old'&&a.age<50)return false;if(u.cl!=null&&u.cl>=0&&a.cl!=u.cl)return false;return true}
+function condMatch(c,p){if(c.word&&!p.toks.includes(c.word))return false;if(c.topic!=null&&c.topic>=0&&p.t!=c.topic)return false;if(c.stance){if(c.stance>0&&p.s<=.25)return false;if(c.stance<0&&p.s>=-.25)return false}
+ if(c.emo!=null&&c.emo>=0&&p.e!=c.emo)return false;if(c.src=='story'&&!p.story)return false;if(c.src=='news'&&!p.news)return false;if(c.src=='people'&&(p.story||p.news))return false;return true}
+const cpuTotal=()=>Math.max(1,3+(has('rules')?5:0)+S.srv*12+(has('cpu1')?10:0)+(has('cpu2')?25:0)+(has('cpu3')?60:0)+upEff('cpu')-S.cpuLaw);
+const rulesUsed=()=>S.rules.filter(r=>r.on).length;
+// ---------- шаг ----------
+let L={inc:0,eng:0,anger:0};
+const K=()=>4+(has('comments')?1:0)+(has('notif')?1:0)+(has('infinite')?2:0);
+const ENGV=.00006;
+function step(){S.t++;const nA=S.A.length;
+ // новые посты жителей копятся во входящей пачке; раз в feedT секунд пачка уходит в ленту
+ const rate=.6+nA/80;const ev=S.act.find(x=>x.ev&&x.evEnd>S.t);
+ for(let i=0;i<rate;i++)if(Math.random()<rate/Math.ceil(rate)&&nA)S.batch.push(agentPost(pk(S.A),ev?ev.ev:null));
+ storyTick();
+ if(S.t>=S.nextFeed){POOL.push(...S.batch);S.batch=[];S.nextFeed=S.t+S.feedT;S.batchAt=S.t}
+ if(S.batch.length>40)S.batch=S.batch.slice(-40);
+ POOL=POOL.filter(p=>S.t-p.born<150);if(POOL.length>160)POOL=POOL.slice(-160);
+ const RL=S.rules.filter(r=>r.on);POOL.forEach(p=>{p.rm=RL.map(r=>condMatch(r.cond,p))});
+ const k=K();let eng=0,anger=0,inc=0;
+ for(const a of S.A){if(S.off[a.d]>S.t||Math.random()>a.act)continue;const fr=a.fr;let best=[];
+  for(const p of POOL){let sc=1.2*Math.exp(-(S.t-p.born)/40)+(has('likes')?Math.min(1.2,p.rx/(nA*.04+3)):0);
+   if(p.man&&audMatch(p.tg,a))sc+=p.man;
+   if(has('pers1'))sc+=a.it[Math.min(p.t,NT-1)]*(has('pers2')?1.4:.7)*(p.t==BYT?0:1);
+   if(p.sh.size){let c=0;for(let i=0;i<fr.length&&c<3;i++)if(p.sh.has(fr[i]))c++;sc+=c*.6}
+   if(p.au&&fr.includes(p.au))sc+=.7;
+   let push=p.man&&audMatch(p.tg,a)?1:0;for(let i=0;i<RL.length;i++)if(p.rm[i]&&audMatch(RL[i].aud,a)){sc+=RL[i].w;if(RL[i].w>0)push=1}
+   if(best.length<k||sc>best[best.length-1][0]){best.push([sc,p,push]);best.sort((x,y)=>y[0]-x[0]);if(best.length>k)best.pop()}}
+  a.feed=best.map(b=>b[1].id);
+  for(const[,p,push]of best){const pw=push?1:.07;p.seenN++;if(p.story)storySeen(p,a);const is=p.t<NT?ISSUE_OF(p.t):-1;const agr=is>=0?a.v[is]*p.s:0;const ti=p.t>=NT?.3:a.it[p.t];
+   const pe=sigm(-1.4+2*p.h+1.5*ti+1.4*Math.abs(agr)+(p.img?.25:0)+(p.vid?.3:0)+(p.char?.6:0));
+   if(Math.random()<pe){const angry=agr<-.12;p.rx++;eng++;a.eng++;a.last=p.txt;const val=(p.vid?1.6:1)*S.mult*ENGV*(1+upEff('cpm'))*advMult(a);inc+=val;
+    if(angry){p.neg++;anger++;a.mood-=.015}else a.mood+=.008;if(p.story)storyReact(p,a,angry);
+    // взгляды тянутся к тому, с чем человек согласен; несогласие слегка отталкивает
+    if(is>=0)a.v[is]=clamp(a.v[is]+.025*pw*(p.s-a.v[is])*Math.abs(p.s),-1,1);
+    if(Math.random()<(angry?.15:.09)*(has('reposts')?1.5:.6))p.sh.add(a.id);
+    // дружбы: рвутся только при сильном несогласии, заводятся при сильном согласии
+    if(p.au&&p.au!=a.id){const b=byId(p.au);if(b){if(angry&&Math.abs(a.v[is]||0)>.45&&fr.includes(b.id)&&Math.random()<.1*pw*(has('unfollow')?1.6:1))unfriend(a,b);else if(agr>.2&&!fr.includes(b.id)&&Math.random()<.06*pw)befriend(a,b)}}}}}
+ // рост: люди приходят, если лента их держит
+ const sat=eng/Math.max(1,nA);if(S.t>=S.nextJoin){const cap=agentCap();const n=Math.max(0,Math.round((sat*1.1+.15)*(1+upEff('reach'))*(1+nA/200)));for(let i=0;i<n&&S.A.length<cap;i++){const host=pk(S.A);addAgent(mkAgent({d:Math.random()<.6&&host?host.d:undefined}),host)}S.nextJoin=S.t+2}
+ S.mult=60*(S.multFx||1);
+ S.A.forEach(a=>{a.mood*=.99;if(a.mood<-1.2&&Math.random()<.02)leave(a)});
+ // экономика
+ const el=elecRate();S.mon.rev+=inc;S.mon.el+=el;S.m+=inc;S.earned+=inc;S.watch+=eng*S.mult;
+ if(S.t-S.mon.start>=MONTH)monthEnd();
+ L={inc,eng,anger,users:S.A.length*S.mult*(1+upEff('scale'))};ema('inc',inc*60,.08);ema('users',L.users,.15);ema('anger',anger/(eng+1),.05);
+ S.hist.push(inc*60);if(S.hist.length>150)S.hist.shift();
+ if(S.t%10==0){clusters();S.polar=polarization()}
+ layoutStep();advTick();newsTick()}
+function agentCap(){return Math.min(1500,Math.round(30*Math.pow(1.055,S.nb))+S.srv*120)}
+function ema(k,v,a){S.ema[k]=S.ema[k]==null?v:S.ema[k]+(v-S.ema[k])*a}
+// ---------- электричество и налоги ----------
+function elecRate(){return (S.A.length*.0006+rulesUsed()*.003+S.srv*.02)*S.elec*S.mult/60}
+function monthEnd(){const rev=S.mon.rev,el=S.mon.el,profit=Math.max(0,rev-el),tax=profit*S.tax/100;S.m-=el+tax;
+ S.bills.unshift({mon:S.bills.length+1,rev,el,tax,rate:S.tax});S.bills.length=Math.min(24,S.bills.length);
+ toast('🧾 Конец месяца: электричество $'+f(el)+', налог на прибыль '+S.tax+'% — $'+f(tax));S.mon={rev:0,el:0,start:S.t};if(S.m<0)mail('<b>Бухгалтерия:</b> счёт ушёл в минус. Пока долг не погашен, покупки заблокированы.')}
+// ---------- кластеры ----------
+function clusters(){const A=S.A;if(A.length<8)return;const k=clamp(Math.round(A.length/45),3,8);let C=(S.cent&&S.cent.length==k)?S.cent.map(c=>c.slice()):Array.from({length:k},()=>pk(A).v.slice());
+ for(let it=0;it<6;it++){const sum=C.map(()=>Array(NI).fill(0)),cnt=Array(k).fill(0);for(const a of A){let bi=0,bd=1e9;for(let i=0;i<k;i++){let d=0;for(let j=0;j<NI;j++)d+=(a.v[j]-C[i][j])**2;if(d<bd){bd=d;bi=i}}a.cl=bi;cnt[bi]++;for(let j=0;j<NI;j++)sum[bi][j]+=a.v[j]}C=C.map((c,i)=>cnt[i]?sum[i].map(x=>x/cnt[i]):pk(A).v.slice())}S.cent=C;
+ S.clusters=C.map((v,i)=>{const m=A.filter(a=>a.cl==i);let dom=0;v.forEach((x,j)=>{if(Math.abs(x)>Math.abs(v[dom]))dom=j});
+  // пузырь = насколько круг друзей однороден И насколько взгляды крайние
+  let same=0,tot=0;m.forEach(a=>a.fr.forEach(id=>{const b=byId(id);if(!b)return;tot++;if(Math.sign(b.v[dom])==Math.sign(v[dom])&&Math.abs(b.v[dom])>.3)same++}));
+  const ext=m.reduce((s,a)=>s+Math.abs(a.v[dom]),0)/(m.length||1);const name=Math.abs(v[dom])<.2?'Умеренные':(v[dom]>0?ISSUES[dom].pro:ISSUES[dom].con);
+  return {id:i,n:name[0].toUpperCase()+name.slice(1),size:m.length,v,dom,bubble:tot?(same/tot)*clamp(ext*1.5,0,1):0,col:'hsl('+((i*47+(v[dom]>0?0:20))%360)+',70%,58%)',mood:m.length?m.reduce((s,a)=>s+a.mood,0)/m.length:0}})}
+function polarization(){let s=0;S.A.forEach(a=>s+=a.v.reduce((x,y)=>x+Math.abs(y),0)/NI);return S.A.length?s/S.A.length:0}
+function layoutStep(){const A=S.A;for(const a of A){let fx=0,fy=0,n=0;for(const id of a.fr){const b=byId(id);if(!b)continue;fx+=b.x;fy+=b.y;n++}const vx=a.v[0]*.5+a.v[6]*.5,vy=a.v[5]*.5-a.v[1]*.5;let tx=vx,ty=vy;if(n){tx=.5*fx/n+.5*vx;ty=.5*fy/n+.5*vy}a.x+=(tx-a.x)*.05+gauss()*.004;a.y+=(ty-a.y)*.05+gauss()*.004}}
+// ---------- сюжеты ----------
+function charName(sex){const ln=pk(LN);return sex=='f'?pk(FN_F)+' '+lnF(ln):pk(FN_M)+' '+ln}
+function storyStart(def){const d=Math.floor(Math.random()*ND);const ch={};Object.entries(def.ch).forEach(([k,sx])=>ch[k]={n:charName(sx),seed:Math.floor(Math.random()*1e6)});
+ const st={id:'s'+(++S.storyId||(S.storyId=1)),k:def.k,node:'start',at:S.t,d,ch,pl:pk(PLACES),seen:new Set(),rx:0,neg:0,up:false,dn:false,reacted:false,news:!!def.news,queue:[]};
+ S.act.push(st);enterNode(st,'start');if(def.news&&has('news'))newsItem(st)}
+function sub(st,s){return s.replace(/\{A\}/g,(st.ch.A||{}).n||'').replace(/\{B\}/g,(st.ch.B||{}).n||'').replace(/\{d\}/g,'«'+DISTRICTS[st.d]+'»').replace(/\{p\}/g,st.pl)}
+function enterNode(st,key){const def=SL.find(x=>x.k==st.k);const nd=def.n[key];st.node=key;st.at=S.t;st.seen=new Set();st.rx=0;st.neg=0;st.up=false;st.dn=false;
+ if(nd.end!=null){finishStory(st,nd);return}
+ nd.p.forEach((q,i)=>st.queue.push({at:S.t+Math.floor(i*nd.w/(nd.p.length+1))+2,q}))}
+function storyTick(){if(has('stories')||S.t>40){if(S.t>=S.nextStory&&S.act.filter(s=>!s.news).length<3){const pool=SL.filter(s=>!s.news&&!S.used.includes(s.k));if(pool.length){const d=pk(pool);S.used.push(d.k);storyStart(d)}S.nextStory=S.t+45+Math.floor(Math.random()*45)}
+  if(S.t>=S.nextNewsArc&&S.act.filter(s=>s.news).length<1){const pool=SL.filter(s=>s.news&&!S.used.includes(s.k));if(pool.length){const d=pk(pool);S.used.push(d.k);storyStart(d)}S.nextNewsArc=S.t+120+Math.floor(Math.random()*90)}}
+ if(S.used.length>=SL.length){S.used=S.used.slice(-8)}
+ S.act.forEach(st=>{if(st.k=='event')return;st.queue=st.queue.filter(it=>{if(S.t<it.at)return true;const[who,txt,s,e]=it.q;let auN,au=0,char=null,seed=0;
+   if(who=='N'){auN=pk(OUT)}else if(who=='D'){auN='Директор «Ленты»';seed=99;char='Директор'}else if(who=='x'){const a=pk(S.A);auN=a?a.n:'Житель';au=a?a.id:0}else{const c=st.ch[who];auN=c.n;seed=c.seed;char=c.n}
+   const p=post({auN,au,seed,char,t:SL.find(x=>x.k==st.k).t,s,e,h:.6+Math.random()*.15,txt:sub(st,txt),story:st.id,news:who=='N'||st.news,img:has('photo')&&Math.random()<.5});
+   if(p.news&&has('news'))S.news.unshift({id:p.id,txt:p.txt,src:auN,at:S.t,st:st.id});S.batch.push(p);return false});
+  const def=SL.find(x=>x.k==st.k),nd=def.n[st.node];if(!nd||nd.end!=null)return;
+  if(S.t-st.at>=nd.w&&!st.queue.length){const m=metrics(st);
+   // если игрок ни разу не отреагировал на первом узле — история проходит мимо него
+   if(st.node=='start'&&!st.reacted&&!st.news){enterNode(st,def.fade);return}
+   const nx=nd.go.find(([c])=>c===1||c(m));enterNode(st,nx?nx[1]:def.fade)}});
+ S.act=S.act.filter(s=>!s.done||S.t-s.doneAt<20)}
+function storySeen(p,a){const st=S.act.find(x=>x.id==p.story);if(st&&!st.done)st.seen.add(a.id)}
+function storyReact(p,a,angry){const st=S.act.find(x=>x.id==p.story);if(st){st.rx++;if(angry)st.neg++}}
+function metrics(st){const n=Math.max(1,S.A.length);const viewers=[...st.seen].map(byId).filter(Boolean);const vn=Math.max(1,viewers.length);
+ return {v:viewers.length/n,r:st.rx/Math.max(1,viewers.length),up:st.up,dn:st.dn,ang:st.rx?st.neg/st.rx:0,dist:viewers.filter(a=>a.d==st.d).length/vn,
+  pro:i=>viewers.filter(a=>a.v[i]>.3).length/vn,con:i=>viewers.filter(a=>a.v[i]<-.3).length/vn}}
+function finishStory(st,nd){st.done=true;st.doneAt=S.t;st.out=sub(st,nd.end);if(st.out){if(has('news')||st.reacted)S.news.unshift({txt:st.out,src:pk(OUT),at:S.t,res:true});S.chron.unshift({t:S.t,k:st.k,out:st.out,d:st.d,reacted:st.reacted});if(st.reacted)toast(st.out)}
+ applyFx(nd.fx||[],st)}
+function applyFx(fx,st){fx.forEach(e=>{const[k,...r]=e.split(':');const rest=r.join(':');
+ if(k=='char'){const[who,...lines]=rest.split('|');const c=st.ch[who];if(!c)return;const ex=S.chars.find(x=>x.n==c.n);const L=lines.map(x=>sub(st,x));if(ex)ex.lines.push(...L);else{S.chars.push({n:c.n,seed:c.seed,lines:L,k:st.k,d:st.d,at:S.t});const a=mkAgent({d:st.d,n:c.n,char:c.n,seed:c.seed});addAgent(a,pk(S.A));if(st.reacted)mail(face(c.n,c.seed)+'<b>'+esc(c.n)+':</b> '+esc(L[0]))}}
+ if(k=='mood')S.A.forEach(a=>{if(a.d==st.d)a.mood+=rest=='+'?.3:-.3});
+ if(k=='view'){const[i,dv]=rest.split(':');S.A.forEach(a=>{if(a.d==st.d)a.v[+i]=clamp(a.v[+i]+(+dv)*.6,-1,1)})}
+ if(k=='money'){S.m+=(S.ema.inc||1)*(+rest)/60}if(k=='fine'){S.m-=(S.ema.inc||1)*(+rest)/60;toast('⚖️ Штраф: $'+f((S.ema.inc||1)*(+rest)/60))}
+ if(k=='adv'){if(!S.extraAdv.some(x=>x.n==rest))S.extraAdv.push({n:rest,mult:.08})}
+ if(k=='off')S.off[st.d]=S.t+(+rest);if(k=='trend')S.trend[+rest]+=2;
+ if(k=='users'){const pc=+rest;if(pc>0)S.multFx=(S.multFx||1)*(1+pc/100);else for(let i=0;i<S.A.length*(-pc)/100;i++)leave(pk(S.A))}
+ if(k=='polar')S.A.forEach(a=>{if(a.d==st.d)a.v=a.v.map(x=>clamp(x*1.08,-1,1))});
+ if(k=='tax'){S.tax=clamp(S.tax+(+rest),5,60);mail('<b>Бухгалтерия:</b> ставка налога на прибыль теперь '+S.tax+'%')}
+ if(k=='elec'){S.elec*=1+(+rest)/100;mail('<b>Бухгалтерия:</b> тариф на электричество изменился: ×'+S.elec.toFixed(2))}})}
+// ---------- мировые события (их обсуждают все) ----------
+const EVENTS=[{t:3,head:'Мэрия подняла плату за парковку вдвое',k:['парковки','мэр']},{t:1,head:'В город приехали 2000 рабочих на стройку',k:['приезжие','стройки']},{t:10,head:'В больницах ввели платные приёмы',k:['врачи']},{t:6,head:'В школах разрешили нейросети на уроках',k:['нейросети']},
+ {t:2,head:'Завод «Химпром» расширяет производство',k:['экология','река']},{t:5,head:'Отменили городской праздник урожая',k:['традиции']},{t:0,head:'Крупная сеть магазинов подняла цены на 15%',k:['цены']},{t:13,head:'Бензин снова подорожал',k:['бензин']},{t:8,head:'Сборная проиграла в полуфинале',k:['футбол']},{t:11,head:'ЕГЭ сделают устным',k:['ЕГЭ','школа']}];
+function newsTick(){if(S.t%140==70&&S.t>60){const e=pk(EVENTS);const st={id:'e'+S.t,k:'event',ev:Object.assign({id:'e'+S.t},e),evEnd:S.t+70,done:false,act:[],queue:[]};S.act.push(st);S.trend[e.t]+=3;
+  const p=post({auN:pk(OUT),t:e.t,s:0,e:4,h:.6,txt:e.head+'.',news:true,ev:st.id});S.batch.push(p);if(has('news'))S.news.unshift({id:p.id,txt:'⚡ '+e.head,src:pk(OUT),at:S.t});if(has('news'))toast('⚡ Событие: '+e.head+' — люди обсуждают')}
+ S.act=S.act.filter(s=>s.k!='event'||s.evEnd>S.t);S.news.length=Math.min(60,S.news.length)}
+function newsItem(st){}
+// ---------- реклама ----------
+const ADV=[{n:'Пиццерия «Сыр»',c:'60 человек в сети',ok:()=>S.A.length>=60,tg:()=>true,x:.15},
+{n:'Энергетик «Ночь»',c:'50 человек до 25 лет',ok:()=>S.A.filter(a=>a.age<25).length>=50,tg:a=>a.age<25,x:.6},
+{n:'Кредит «Сейчас»',c:'пузырь «против богатых» от 40%',ok:()=>S.clusters.some(c=>c.dom==6&&c.v[6]<0&&c.bubble>.4),tg:a=>a.v[6]<-.2,x:.7},
+{n:'Политсайт «Правда+»',c:'пузырь «против власти» от 25 человек и 50%',ok:()=>S.clusters.some(c=>c.dom==0&&c.v[0]<0&&c.size>=25&&c.bubble>.5),tg:a=>a.v[0]<-.3,x:.9},
+{n:'Патриот-тур',c:'пузырь «за традиции» от 30 человек',ok:()=>S.clusters.some(c=>c.dom==5&&c.v[5]>0&&c.size>=30&&c.bubble>.4),tg:a=>a.v[5]>.3,x:.8},
+{n:'БАДы «Правда о здоровье»',c:'50 человек, не верящих врачам',ok:()=>S.A.filter(a=>a.v[2]<-.4).length>=50,tg:a=>a.v[2]<-.3,x:1},
+{n:'Курсы «Код за месяц»',c:'60 человек за нейросети',ok:()=>S.A.filter(a=>a.v[3]>.4).length>=60,tg:a=>a.v[3]>.3,x:.8},
+{n:'Эко-бутылки «Чисто»',c:'пузырь «за экологию» от 50%',ok:()=>S.clusters.some(c=>c.dom==4&&c.v[4]>0&&c.bubble>.5),tg:a=>a.v[4]>.3,x:.8},
+{n:'Охрана «Щит»',c:'злость в ленте от 35%',ok:()=>(S.ema.anger||0)>=.35,tg:()=>true,x:.35},
+{n:'Банк «Столица»',c:'800 человек в сети',ok:()=>S.A.length>=800,tg:()=>true,x:.4}];
+function advTick(){if(!has('advert')||S.t%3)return;ADV.forEach((a,i)=>{const st=S.adv[i]||0,ok=a.ok();if(st!=2&&ok){S.adv[i]=2;toast('🤝 Контракт: '+a.n)}else if(st==2&&!ok&&Math.random()<.08){S.adv[i]=1;toast('❌ '+a.n+' ушёл: условие не выполняется')}})}
+function advMult(a){let m=1;if(has('advert'))ADV.forEach((x,i)=>{if(S.adv[i]==2&&x.tg(a))m+=x.x});S.extraAdv.forEach(e=>m+=e.mult);return m}
+// ---------- улучшения: фиксированная цена, каждое следующее +13% ----------
+const C0=2.5,GROW=1.13;const price=()=>C0*Math.pow(GROW,S.nb);
+const FN=[['likes','Удобство','Лайки',[],'популярное поднимается выше'],['avatars','Удобство','Аватарки',['likes'],'лица на постах'],['comments','Удобство','Комментарии',['likes'],'+1 пост в ленте человека'],
+['photo','Удобство','Фото',['avatars'],'посты с картинками цепляют сильнее'],['video','Удобство','Видео',['photo'],'видео держит дольше'],['notif','Удобство','Уведомления',['comments'],'+1 пост в ленте'],['infinite','Удобство','Бесконечная лента',['notif','video'],'+2 поста в ленте'],
+['feed10','Удобство','Медленная лента',['comments'],'новые посты приходят раз в 10 с — больше времени решать'],['feed20','Удобство','Очередь модерации',['feed10'],'раз в 20 с'],['feedx','Удобство','Свой интервал',['feed20'],'выбирай интервал сам'],
+['reposts','Сеть','Репосты',['comments'],'посты расходятся по друзьям'],['unfollow','Сеть','Кнопка «отписаться»',['reposts'],'люди охотнее рвут связи с несогласными'],
+['netmap','Аналитика','Карта сети.exe',['likes'],'программа: люди, дружбы и пузыри'],['clusters','Аналитика','Кластеры',['netmap'],'сеть находит пузыри'],['profiles','Аналитика','Профили людей',['netmap'],'клик по человеку — его взгляды и лента'],['dash','Аналитика','Дашборд',['netmap'],'графики'],
+['target','Алгоритм','Адресные ▲',['clusters'],'поднимай пост только для нужной аудитории'],['dict','Алгоритм','Словарь',['comments'],'клик по слову — в словарь'],['rules','Алгоритм','Правила ленты',['dict'],'автоматические ▲ и ▼ (+5 мощности)'],
+['raud','Алгоритм','Аудитории в правилах',['rules','clusters'],'правило только для района, взгляда, возраста, кластера'],['rstance','Алгоритм','Позиция в правилах',['rules'],'условие «за» или «против»'],['pers1','Алгоритм','Персонализация I',['profiles'],'лента учитывает интересы'],['pers2','Алгоритм','Персонализация II',['pers1'],'сильнее'],
+['cpu1','Мощность','Сервер правил I',['rules'],'+10 мощности'],['cpu2','Мощность','Сервер правил II',['cpu1'],'+25 мощности'],['cpu3','Мощность','Сервер правил III',['cpu2'],'+60 мощности'],
+['news','Мир','Новости.exe',['likes'],'окно новостей: события, политика, налоги'],['chron','Мир','Хроника',['news'],'архив последствий'],['people','Мир','Люди',['news'],'персонажи историй'],
+['advert','Деньги','Рекламодатели',['likes'],'контракты за нужную аудиторию'],['accounting','Деньги','Бухгалтерия',['likes'],'счета за свет и налоги'],['servers','Масштаб','Серверы',['notif'],'больше людей в симуляции']
+].map(([id,b,n,req,d])=>({id,b,n,req,d}));
+const BR=['Удобство','Сеть','Аналитика','Алгоритм','Мощность','Мир','Деньги','Масштаб'];
+const UPS=[];(function(){[50,100,200,300,450,650,900,1200].forEach((u,i)=>UPS.push({id:'u'+i,n:['Кэш ленты','Быстрые картинки','Тёмная тема','Автоплей','Красный кружок','Стрики','Подборки дня','Истории'][i],d:i%2?'+15% приток людей':'+5% к доходу',eff:i%2?{reach:.15}:{cpm:.05},c:'Людей в сети: '+u,need:()=>[S.A.length,u]}));
+ [1,4,15,50,150,500,1500,5000].forEach((m,i)=>UPS.push({id:'m'+i,n:['Рекламная сеть','Ретаргетинг','Look-alike','Пиксель','Программатик','Своя биржа','Брендлифт','Rich media'][i],d:'+5% к доходу',eff:{cpm:.05},c:'Доход: $'+f(m)+'/мин',need:()=>[S.ema.inc||0,m]}));
+ [1e4,1e5,1e6,1e7,1e8].forEach((x,i)=>UPS.push({id:'w'+i,n:['Плавная лента','Предзагрузка','Кликбейт-превью','«Ещё 5 минут»','Автопереход'][i],d:'+8% к масштабу аудитории',eff:{scale:.08},c:'Просмотрено: '+f(x)+' мин',need:()=>[S.watch,x]}));
+ [2,6,12,20,30].forEach((x,i)=>UPS.push({id:'s'+i,n:['Отдел сюжетов','Редакция','Свои журналисты','Медиахолдинг','Фабрика новостей'][i],d:'+5% к доходу',eff:{cpm:.05},c:'Историй, где ты вмешался: '+x,need:()=>[S.chron.filter(c=>c.reacted).length,x]}));
+ [5,15,40].forEach((x,i)=>UPS.push({id:'r'+i,n:['Шаблоны правил','Отладчик','Оптимизатор'][i],d:'+8 мощности для правил',eff:{cpu:8},c:'Правил создано: '+x,need:()=>[S.rulesMade||0,x]}));
+ [.25,.35,.45,.55].forEach((x,i)=>UPS.push({id:'p'+i,n:['Эхо-камера','Стена','Крепость','Монолит'][i],d:'+6% к доходу',eff:{cpm:.06},c:'Самый сильный пузырь '+Math.round(x*100)+'%',need:()=>[Math.max(0,...S.clusters.map(c=>c.bubble))*100,x*100]}))})();
+function upEff(k){let s=0;UPS.forEach(u=>{if(S.up[u.id]&&u.eff[k]!=null)s+=u.eff[k]});return s}
+function canBuy(){return S.m>=price()&&S.m>0}
+function buy(kind,id){const c=price();if(!canBuy())return false;if(kind=='fn'){const n=FN.find(x=>x.id==id);if(!n||has(id)||!n.req.every(has))return false;S.f[id]=1;if(id=='feed10')S.feedT=10;if(id=='feed20')S.feedT=20}
+ else{const u=UPS.find(x=>x.id==id);if(!u||S.up[id])return false;const[n,m]=u.need();if(n<m)return false;S.up[id]=1}S.m-=c;S.nb++;return true}
+function init(){for(let i=0;i<24;i++)addAgent(mkAgent(),S.A.length?pk(S.A):null);for(let i=0;i<20;i++)POOL.push(agentPost(pk(S.A)));S.mon.start=0}
+// ===================== ИНТЕРФЕЙС =====================
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function face(name,seed,px=3){return '<span class="face">'+avatar(name,px,{seed})+'</span>'}
+const B=(t,a,ex='')=>'<button class="b95" data-a="'+a+'" '+ex+'>'+t+'</button>';
+const opt=(arr,sel)=>arr.map(([v,n])=>'<option value="'+v+'"'+(String(v)===String(sel)?' selected':'')+'>'+n+'</option>').join('');
+const bar=(v,cls='')=>'<div class="prog '+cls+'"><i style="width:'+clamp(v*100,0,100)+'%"></i></div>';
+function trend(k){const h=S.ema[k],o=S.ema[k+'_o'];return o==null?'':h>o*1.002?'<span class="up">▲</span>':h<o*.998?'<span class="dn">▼</span>':'<span class="eq">■</span>'}
+function toast(t){const e=$('toast');if(!e)return;const d=document.createElement('div');d.className='w95 tst';d.innerHTML='<div class="tb"><span>ЛентаОС</span></div><div class="bd">'+t+'</div>';e.prepend(d);setTimeout(()=>d.remove(),5000);while(e.children.length>4)e.lastChild.remove()}
+function mail(t){if(S.mails.some(m=>m.t==t))return;S.mails.unshift({t,read:false});S.mails.length=Math.min(50,S.mails.length);draw('mail');icons()}
+const EMN=['радость','злость','страх','умиление','интерес'];
+const audList=()=>[['all','всем']].concat(has('clusters')?S.clusters.map(c=>['c'+c.id,'кластеру «'+c.n+'»']):[]).concat(ISSUES.flatMap((x,i)=>[['p'+i,'кто '+x.pro],['n'+i,'кто '+x.con]]));
+const audFrom=v=>v=='all'?null:v[0]=='c'?{cl:+v.slice(1)}:{issue:+v.slice(1),side:v[0]=='p'?1:-1};
+const audName=u=>{if(!u)return 'всем';const p=[];if(u.d>=0)p.push(DISTRICTS[u.d]);if(u.issue>=0)p.push(u.side>0?ISSUES[u.issue].pro:ISSUES[u.issue].con);if(u.age=='young')p.push('до 25');if(u.age=='old')p.push('50+');if(u.cl>=0)p.push('кластер «'+((S.clusters[u.cl]||{}).n||'?')+'»');return p.join(', ')||'всем'};
+const condName=c=>{const p=[];if(c.word)p.push('«'+c.word+'»');if(c.topic>=0)p.push('тема '+TOPICS[c.topic].n);if(c.stance)p.push(c.stance>0?'позиция «за»':'позиция «против»');if(c.emo>=0)p.push(EMN[c.emo]);if(c.src)p.push({story:'истории',news:'новости',people:'обычные посты'}[c.src]);return p.join(' + ')||'любые посты'};
+let DRAFT={word:'',topic:-1,stance:0,emo:-1,src:'',d:-1,issue:-1,side:1,age:'',cl:-1,w:2},TG='all',UF=null;
+function postHTML(p,opts={}){const ang=p.rx?p.neg/p.rx:0;const nm=p.auN;const st=p.story&&S.act.find(x=>x.id==p.story);
+ return '<article class="post'+(p.news?' newsp':'')+(p.man>0?' upd':p.man<0?' dnd':'')+'">'+(has('avatars')?'<div class="av">'+avatar(nm,3,{seed:p.seed||0})+'</div>':'')+
+ '<div class="pc"><div class="meta"><b>'+esc(nm)+'</b>'+(p.news?' <span class="tag">новость</span>':'')+(p.char?' <span class="tag">персонаж</span>':'')+(p.vid?'<span class="tag">видео</span>':'')+(p.man>0?' <span class="tag up">▲ '+esc(audName(p.tg))+'</span>':p.man<0?' <span class="tag dn">▼ закопан</span>':'')+'</div>'+
+ '<div class="txt">'+p.txt.split(' ').map(w=>{const n=normW(w);if(!has('dict')||n.length<4||STOP.has(n))return esc(w);return '<span class="wd'+(S.dict[n]?' in':'')+'" data-w="'+n+'">'+esc(w)+'</span>'}).join(' ')+'</div>'+
+ (p.img?'<div class="pimg'+(p.vid?' vid':'')+'">'+postImage(p.t>=NT?14:p.t,p.id)+'</div>':'')+
+ (opts.stats===false?'':'<div class="meta">👁 '+p.seenN+(has('likes')?' · ♥ '+p.rx:'')+(has('comments')?' · 😡 '+Math.round(ang*100)+'%':'')+(has('reposts')?' · ⟲ '+p.sh.size:'')+(has('netmap')?' · <a data-a="wave" data-p="'+p.id+'">волна</a>':'')+'</div>')+'</div>'+
+ (opts.btn===false?'':'<div class="pb">'+B('▲','pup','data-p="'+p.id+'"')+B('▼','pdn','data-p="'+p.id+'"')+'</div>')+'</article>'}
+const findPost=id=>POOL.find(x=>x.id==id)||S.batch.find(x=>x.id==id);
+// ---------- окна ----------
+const WIN={
+ net:{t:'Свойства: Сеть',i:'srv',w:300,h:250,live:1,r(){return '<fieldset><legend>Сеть</legend><div class="kv"><span>Пользователи</span><b>'+f(S.ema.users)+' '+trend('users')+'</b><span>Людей в симуляции</span><b>'+S.A.length+' / '+agentCap()+'</b><span>Доход</span><b>$'+f(S.ema.inc)+'/мин '+trend('inc')+'</b><span>На счёте</span><b class="'+(S.m<0?'dn':'')+'">$'+f(S.m)+'</b><span>Злость в ленте</span><b>'+Math.round((S.ema.anger||0)*100)+'%</b><span>Поляризация</span><b>'+Math.round(S.polar*100)+'%</b></div></fieldset>'+(has('rules')?'<div>Мощность правил: '+rulesUsed()+' / '+cpuTotal()+'</div>'+bar(rulesUsed()/cpuTotal()):'')}},
+ feed:{t:'ЛЕНТА.EXE',i:'lenta',w:480,h:620,live:1,r(){const left=Math.max(0,S.nextFeed-S.t);
+  return '<div class="row"><b>Входящие: '+S.batch.length+' постов</b><span>в ленту через <b>'+left+' с</b></span></div>'+bar(1-left/S.feedT)+
+  (has('feedx')?'<label class="row">Интервал: <input type="range" min="5" max="60" step="5" value="'+S.feedT+'" data-r="feedT"> <b>'+S.feedT+' с</b></label>':'')+
+  (has('target')?'<label class="row">▲ показывать: <select id="tg">'+opt(audList(),TG)+'</select></label>':'')+
+  '<div class="feedbox">'+S.batch.slice().reverse().map(p=>postHTML(p,{stats:false})).join('')+(S.batch.length?'':'<div class="lbl" style="padding:8px">Новых постов пока нет.</div>')+
+  '<div class="sep">Сейчас в ленте у людей</div>'+POOL.slice().sort((a,b)=>b.seenN-a.seenN).slice(0,8).map(p=>postHTML(p)).join('')+'</div>'}},
+ news:{t:'Новости.exe',i:'press',w:440,h:460,need:'news',live:1,r(){return '<div class="lbl">Новости и события города. Новость можно поднять или закопать в ленте — от этого зависит, чем всё кончится. Клик по слову — в словарь.</div>'+
+  S.news.slice(0,25).map(n=>{const p=n.id&&findPost(n.id);return '<div class="news'+(n.res?' res':'')+'"><span class="lbl">'+esc(n.src||'')+' · '+Math.max(0,S.t-n.at)+' с назад</span><div>'+n.txt.split(' ').map(w=>{const k=normW(w);if(!has('dict')||k.length<4||STOP.has(k))return esc(w);return '<span class="wd'+(S.dict[k]?' in':'')+'" data-w="'+k+'">'+esc(w)+'</span>'}).join(' ')+'</div>'+(p?'<div>'+B('▲ поднять','pup','data-p="'+p.id+'"')+B('▼ закопать','pdn','data-p="'+p.id+'"')+(p.man?' <b>'+(p.man>0?'поднято':'закопано')+'</b>':'')+'</div>':'')+'</div>'}).join('')}},
+ acc:{t:'Бухгалтерия',i:'money',w:380,h:360,need:'accounting',live:1,r(){const left=MONTH-(S.t-S.mon.start);const prof=Math.max(0,S.mon.rev-S.mon.el);
+  return '<fieldset><legend>Этот месяц · до конца '+Math.floor(left/60)+':'+String(left%60).padStart(2,'0')+'</legend><div class="kv"><span>Выручка</span><b>$'+f(S.mon.rev)+'</b><span>Электричество</span><b class="dn">−$'+f(S.mon.el)+'</b><span>Налог '+S.tax+'% (прогноз)</span><b class="dn">−$'+f(prof*S.tax/100)+'</b><span>Тариф на свет</span><b>×'+S.elec.toFixed(2)+'</b></div></fieldset><div class="lbl">Свет тратят люди в симуляции, включённые правила и серверы. Налог на прибыль меняют выборы и законы из новостей.</div>'+
+  (S.bills.length?'<table class="t95"><tr><th>Месяц</th><th>Выручка</th><th>Свет</th><th>Налог</th></tr>'+S.bills.map(b=>'<tr><td>'+b.mon+'</td><td>$'+f(b.rev)+'</td><td>$'+f(b.el)+'</td><td>$'+f(b.tax)+' ('+b.rate+'%)</td></tr>').join('')+'</table>':'')}},
+ map:{t:'Карта сети.exe',i:'world',w:620,h:520,need:'netmap',r(){return '<div class="maptools"><label>Цвет: <select id="mapc">'+opt([['cl','кластеры'],['d','районы']].concat(ISSUES.map((x,i)=>[i,x.n])),S.mapc||'cl')+'</select></label><span class="lbl" id="mapinfo">Клик по точке — профиль человека.</span></div><div class="mapwrap"><canvas id="mapcv"></canvas><div id="prof"></div></div>'}},
+ ufeed:{t:'Лента человека',i:'lenta',w:420,h:520,need:'profiles',live:1,r(){const a=UF&&byId(UF);if(!a)return '<span class="lbl">Открой человека на карте и нажми «Его лента».</span>';
+  return '<div class="row">'+avatar(a.n,3,{seed:a.seed})+'<span><b>'+esc(a.n)+'</b>, '+a.age+' лет, '+DISTRICTS[a.d]+'<br><span class="lbl">'+ISSUES.map((x,i)=>Math.abs(a.v[i])>.3?(a.v[i]>0?x.pro:x.con):null).filter(Boolean).join(', ')+'</span></span></div><div class="lbl">Что он видит прямо сейчас:</div><div class="feedbox">'+a.feed.map(id=>POOL.find(p=>p.id==id)).filter(Boolean).map(p=>postHTML(p)).join('')+'</div>'}},
+ cl:{t:'Кластеры и пузыри',i:'aud',w:520,h:360,need:'clusters',live:1,r(){return '<div class="lbl">Группы похожих людей. Пузырь растёт, когда группе показывают только одну сторону. Тогда они сидят дольше и злее реагируют на чужое.</div><table class="t95"><tr><th>Кластер</th><th>Людей</th><th>Пузырь</th><th>Настроение</th></tr>'+
+  S.clusters.map(c=>'<tr><td><i class="dot" style="background:'+c.col+'"></i>'+c.n+'</td><td>'+c.size+'</td><td>'+bar(c.bubble)+Math.round(c.bubble*100)+'%</td><td>'+(c.mood>.1?'🙂':c.mood<-.1?'😠':'😐')+'</td></tr>').join('')+'</table>'}},
+ rules:{t:'Правила ленты',i:'rules',w:660,h:520,need:'rules',live:1,r(){const used=rulesUsed(),cap=cpuTotal(),d=Object.keys(S.dict).sort(),D=DRAFT;
+  let h='<fieldset><legend>Новое правило</legend><div class="rf">ЕСЛИ пост: <select data-df="word">'+opt([['','любые слова']].concat(d.map(w=>[w,'«'+w+'»'])),D.word)+'</select><select data-df="topic">'+opt([[-1,'любая тема']].concat(TOPICS.map((t,i)=>[i,t.n])),D.topic)+'</select>'+
+   (has('rstance')?'<select data-df="stance">'+opt([[0,'любая позиция'],[1,'позиция «за»'],[-1,'позиция «против»']],D.stance)+'</select>':'')+'<select data-df="emo">'+opt([[-1,'любая эмоция']].concat(EMN.map((e,i)=>[i,e])),D.emo)+'</select><select data-df="src">'+opt([['','любые'],['story','истории'],['news','новости'],['people','обычные']],D.src)+'</select></div>'+
+   (has('raud')?'<div class="rf">ДЛЯ: <select data-df="d">'+opt([[-1,'все районы']].concat(DISTRICTS.map((x,i)=>[i,x])),D.d)+'</select><select data-df="issue">'+opt([[-1,'любые взгляды']].concat(ISSUES.map((x,i)=>[i,x.n])),D.issue)+'</select>'+(+D.issue>=0?'<select data-df="side">'+opt([[1,ISSUES[+D.issue].pro],[-1,ISSUES[+D.issue].con]],D.side)+'</select>':'')+'<select data-df="age">'+opt([['','любой возраст'],['young','до 25'],['old','50+']],D.age)+'</select><select data-df="cl">'+opt([[-1,'любой кластер']].concat(S.clusters.map(c=>[c.id,c.n])),D.cl)+'</select></div>':'')+
+   '<div class="rf">ТО: <select data-df="w">'+opt([[3,'▲▲▲ сильно поднять'],[2,'▲▲ поднять'],[1,'▲ чуть поднять'],[-1,'▼ чуть занизить'],[-2,'▼▼ занизить'],[-4,'▼▼▼ закопать']],D.w)+'</select> '+B('Создать правило','mkrule')+'</div></fieldset>';
+  h+='<div class="row"><b>Правил: '+S.rules.length+' · включено '+used+' / '+cap+'</b><span class="lbl">Каждое включённое правило ест электричество</span></div>'+bar(used/cap,used>=cap?'red':'');
+  return h+S.rules.map((r,i)=>'<div class="rule'+(r.on?'':' offr')+'"><label><input type="checkbox" data-ron="'+i+'"'+(r.on?' checked':'')+'></label><span class="rtxt">'+(r.w>0?'▲'.repeat(Math.min(3,r.w)):'▼'.repeat(Math.min(3,-r.w)))+' '+esc(condName(r.cond))+' → '+esc(audName(r.aud))+'</span>'+B('⧉','duprule','data-i="'+i+'"')+B('×','unrule','data-i="'+i+'"')+'</div>').join('')}},
+ dict:{t:'Словарь',i:'rules',w:360,h:300,need:'dict',r(){const d=Object.keys(S.dict).sort();return '<div class="lbl">Кликай по словам в ленте и новостях. Слова из словаря используются в правилах.</div><div>'+(d.length?d.map(w=>'<span class="chip">'+w+' <a data-a="undict" data-w="'+w+'">×</a></span>').join(''):'<span class="lbl">Пусто.</span>')+'</div>'}},
+ chron:{t:'Хроника',i:'press',w:460,h:400,need:'chron',r(){return S.chron.map(c=>'<div class="news'+(c.reacted?' res':'')+'">'+(c.reacted?'<b>ты вмешался</b> · ':'')+DISTRICTS[c.d]+'<br>'+esc(c.out)+'</div>').join('')||'<span class="lbl">Пусто.</span>'}},
+ people:{t:'Люди',i:'people',w:420,h:400,need:'people',r(){return S.chars.map(c=>'<div class="card"><div class="row"><span>'+face(c.n,c.seed,3)+' <b>'+esc(c.n)+'</b></span><span class="lbl">'+DISTRICTS[c.d]+'</span></div><div>«'+esc(c.lines[c.lines.length-1])+'»</div></div>').join('')||'<span class="lbl">Пока никого. Персонажи появляются, когда истории заканчиваются.</span>'}},
+ fn:{t:'Функции',i:'tree',w:560,h:480,live:1,r(){const c=price();return '<div class="lbl">Каждое улучшение (функция или апгрейд) дороже предыдущего на 13%. Сейчас любое стоит <b>$'+f(c)+'</b>. Куплено '+S.nb+'.</div><div class="tree">'+BR.map(b=>'<fieldset><legend>'+b+'</legend>'+FN.filter(n=>n.b==b).map(n=>{const own=has(n.id),ok=n.req.every(has);
+  return '<div class="node'+(own?' own':ok?'':' lock')+'"><div><b>'+n.n+'</b><div class="lbl">'+(own?'✓ '+n.d:ok?n.d:'нужно: '+n.req.filter(r=>!has(r)).map(r=>FN.find(x=>x.id==r).n).join(', '))+'</div></div>'+(own?'':B('$'+f(c),'fn','data-id="'+n.id+'"'+(ok&&canBuy()?'':' disabled')))+'</div>'}).join('')+'</fieldset>').join('')+'</div>'}},
+ up:{t:'Апгрейды и вехи',i:'up',w:420,h:460,live:1,r(){const c=price();const av=UPS.filter(u=>!S.up[u.id]&&(()=>{const[n,m]=u.need();return n>=m})()),nx=UPS.filter(u=>!S.up[u.id]&&(()=>{const[n,m]=u.need();return n<m})()).map(u=>{const[n,m]=u.need();return [n/m,u]}).sort((a,b)=>b[0]-a[0]).slice(0,6);
+  return '<fieldset><legend>Доступно ('+av.length+') · цена $'+f(c)+'</legend>'+(av.map(u=>'<div class="row"><span><b>'+u.n+'</b><br><span class="lbl">'+u.d+'</span></span>'+B('Купить','upg','data-id="'+u.id+'"'+(canBuy()?'':' disabled'))+'</div>').join('')||'<span class="lbl">Двигайся к вехам.</span>')+'</fieldset><fieldset><legend>Ближайшие вехи</legend>'+nx.map(([p,u])=>'<div><div class="row"><span>'+u.c+'</span><span class="lbl">→ '+u.n+'</span></div>'+bar(p)+'</div>').join('')+'</fieldset>'}},
+ adv:{t:'Рекламодатели',i:'ad',w:440,h:420,need:'advert',live:1,r(){return '<div class="lbl">Рекламодатели платят больше за минуты своих людей. Их условия выполняются только через пузыри, которые ты выращиваешь.</div>'+ADV.map((a,i)=>'<div class="card'+(S.adv[i]==2?' ok':'')+'"><div class="row"><b>'+a.n+'</b><span>+'+Math.round(a.x*100)+'% к доходу с их людей</span></div><div class="lbl">Условие: '+a.c+' — '+(S.adv[i]==2?'✓ контракт':'не выполнено')+'</div></div>').join('')+S.extraAdv.map(e=>'<div class="card ok">'+esc(e.n)+' <span class="lbl">местный, +8%</span></div>').join('')}},
+ infra:{t:'Серверы',i:'srv',w:340,h:220,need:'servers',live:1,r(){return '<div>Людей в симуляции: '+S.A.length+' / '+agentCap()+'</div>'+bar(S.A.length/agentCap())+'<div class="lbl">Стойка: +120 человек в симуляции и +12 мощности правил. Ест электричество. Цена — как у улучшения.</div>'+B('Стойка серверов $'+f(price()),'srv',canBuy()?'':'disabled')}},
+ dash:{t:'Дашборд',i:'dash',w:420,h:300,need:'dash',live:1,r(){return '<canvas id="cv" width="380" height="110"></canvas><div class="lbl">Доход $/мин, последние 2,5 минуты</div>'}},
+ mail:{t:'Почта',i:'mail',w:420,h:380,r(){S.mails.forEach(m=>m.read=true);return S.mails.slice(0,20).map(m=>'<div class="news mailrow">'+m.t+'</div>').join('')}},
+ help:{t:'Справка',i:'help',w:460,h:440,r(){return '<b>Как играть</b><ul><li>Люди пишут посты, они копятся во «Входящих». Раз в несколько секунд пачка уходит в ленту — до этого ты решаешь: ▲ поднять, ▼ закопать или ничего не делать.</li><li>Доход — это внимание. Деньги за клики не платят: платят за то, сколько люди сидят в ленте.</li><li>Пузыри растут только от тебя: если одним показывать «за», а другим «против», они разойдутся. Если показывать всем всё — останутся умеренными.</li><li>Иногда в ленте проскальзывают истории: пропал человек, слух про хлеб, депутат с налогами. Если ты отреагировал, история продолжится, и от охвата и от того, кто её увидел, зависит исход.</li><li>Раз в месяц (5 минут) — счёт за свет и налог на прибыль. Ставку налога меняют выборы и законы из новостей.</li><li>Все улучшения дорожают на 13% после каждой покупки.</li></ul>'}}};
+// ---------- карта ----------
+let MAPV={hl:null,sel:null};
+function drawMap(){const c=$('mapcv');if(!c||!c.getContext)return;const wrap=c.parentElement;const W=wrap.clientWidth,H=wrap.clientHeight;if(c.width!=W||c.height!=H){c.width=W;c.height=H}
+ const x=c.getContext('2d');x.fillStyle='#0b1020';x.fillRect(0,0,W,H);const A=S.A;if(!A.length)return;let mnx=1e9,mxx=-1e9,mny=1e9,mxy=-1e9;A.forEach(a=>{mnx=Math.min(mnx,a.x);mxx=Math.max(mxx,a.x);mny=Math.min(mny,a.y);mxy=Math.max(mxy,a.y)});
+ const sx=(W-30)/Math.max(.5,mxx-mnx),sy=(H-30)/Math.max(.5,mxy-mny);const P=a=>[15+(a.x-mnx)*sx,15+(a.y-mny)*sy];MAPV.P=P;
+ x.strokeStyle='rgba(140,160,220,.12)';x.lineWidth=1;x.beginPath();let n=0;for(const a of A){const[p1,q1]=P(a);for(const id of a.fr){if(id<a.id)continue;const b=byId(id);if(!b)continue;const[p2,q2]=P(b);x.moveTo(p1,q1);x.lineTo(p2,q2);if(++n>4000)break}if(n>4000)break}x.stroke();
+ const mode=S.mapc||'cl';const hp=MAPV.hl?findPost(MAPV.hl):null;
+ for(const a of A){const[px,py]=P(a);let col;if(hp){col=hp.sh.has(a.id)?'#ff3b5c':'#2a3350'}else if(mode=='cl')col=a.cl>=0&&S.clusters[a.cl]?S.clusters[a.cl].col:'#556';else if(mode=='d')col='hsl('+a.d*45+',65%,55%)';else{const v=a.v[+mode];col=v>0?'rgba(80,160,255,'+(.3+v*.7)+')':'rgba(255,90,90,'+(.3-v*.7)+')'}
+  x.fillStyle=col;const r=a.char?5:2.6;x.beginPath();x.arc(px,py,r,0,7);x.fill();if(a.char){x.strokeStyle='#fff';x.stroke()}if(MAPV.sel==a.id){x.strokeStyle='#ff0';x.lineWidth=2;x.beginPath();x.arc(px,py,7,0,7);x.stroke();x.lineWidth=1}}
+ x.fillStyle='#fff';x.font='11px Tahoma';if(mode!='cl'&&mode!='d')x.fillText('синие: '+ISSUES[+mode].pro+'   красные: '+ISSUES[+mode].con,8,H-8);if(hp)x.fillText('Красные — кто репостнул: «'+hp.txt.slice(0,50)+'…»',8,14)}
+function profHTML(a){if(!a)return '';return '<div class="w95 pcard"><div class="tb"><span>Профиль</span><span class="ctl"><i data-a="unprof">×</i></span></div><div class="bd"><div class="row"><span>'+avatar(a.n,4,{seed:a.seed})+'</span><span><b>'+esc(a.n)+'</b><br>'+a.age+' лет · '+DISTRICTS[a.d]+'<br>друзей: '+a.fr.length+(a.cl>=0&&S.clusters[a.cl]?'<br>кластер: '+S.clusters[a.cl].n:'')+'</span></div>'+
+ ISSUES.map((x,i)=>'<div class="vrow"><span>'+x.n+'</span><div class="vbar"><i style="left:'+(50+Math.min(0,a.v[i])*50)+'%;width:'+Math.abs(a.v[i])*50+'%;background:'+(a.v[i]>0?'#3a7bd5':'#d53a3a')+'"></i></div></div>').join('')+'<div class="lbl">Настроение: '+(a.mood>.1?'🙂':a.mood<-.1?'😠':'😐')+' · реакций: '+a.eng+'</div>'+(a.last?'<div class="news">Последнее, что зацепило: «'+esc(a.last)+'»</div>':'')+B('Его лента','ufeed','data-id="'+a.id+'"')+'</div></div>'}
+// ---------- окна: менеджер ----------
+let ZT=10;
+function wstate(id){const w=WIN[id];if(!S.wins[id]){const n=Object.keys(S.wins).length;S.wins[id]={open:false,min:false,x:96+(n%6)*34,y:10+(n%6)*26,w:w.w,h:w.h,z:++ZT}}return S.wins[id]}
+const avail=id=>!WIN[id].need||has(WIN[id].need);
+function openWin(id){if(!avail(id))return;const s=wstate(id);s.open=true;s.min=false;s.z=++ZT;fitWin(s);render();if(id=='mail')icons()}
+function fitWin(s){const dw=window.innerWidth,dh=window.innerHeight-40;s.w=Math.min(s.w,dw-4);s.h=Math.min(s.h,dh-4);s.x=clamp(s.x,0,Math.max(0,dw-s.w));s.y=clamp(s.y,0,Math.max(0,dh-s.h))}
+function render(){const d=$('wins');Object.keys(WIN).forEach(id=>{const s=S.wins[id];let el=$('w_'+id);if(!s||!s.open||!avail(id)){if(el)el.remove();return}
+  if(!el){el=document.createElement('section');el.className='w95 win';el.id='w_'+id;el.innerHTML='<div class="tb" data-drag="'+id+'"><span>'+WIN[id].t+'</span><span class="ctl"><i data-a="wmin" data-id="'+id+'">_</i><i data-a="wmax" data-id="'+id+'">□</i><i data-a="wclose" data-id="'+id+'">×</i></span></div><div class="bd" id="b_'+id+'"></div>';d.appendChild(el);
+   el.addEventListener('mousedown',()=>{if(s.z<ZT){s.z=++ZT;render()}});if(window.ResizeObserver)new ResizeObserver(()=>{if(el.offsetWidth>50){s.w=el.offsetWidth;s.h=el.offsetHeight;if(id=='map')drawMap()}}).observe(el);draw(id)}
+  el.style.cssText='left:'+s.x+'px;top:'+s.y+'px;width:'+s.w+'px;height:'+s.h+'px;z-index:'+s.z+';display:'+(s.min?'none':'flex');el.classList.toggle('active',s.z==ZT)});taskbar()}
+function draw(id){const b=$('b_'+id);if(!b)return;const ae=document.activeElement;if(ae&&b.contains(ae)&&(ae.tagName=='SELECT'||ae.tagName=='INPUT'))return;
+ if(id=='map'&&$('mapcv')){drawMap();if(MAPV.sel!=null)$('prof').innerHTML=profHTML(byId(MAPV.sel));return}
+ const fb=b.querySelector('.feedbox'),fst=fb?fb.scrollTop:0,st=b.scrollTop;b.innerHTML=WIN[id].r();b.scrollTop=st;const nf=b.querySelector('.feedbox');if(nf)nf.scrollTop=fst;if(id=='dash')spark();if(id=='map')drawMap()}
+function taskbar(){$('tasks').innerHTML=Object.keys(WIN).filter(id=>S.wins[id]&&S.wins[id].open&&avail(id)).map(id=>'<button class="b95 task'+(S.wins[id].z==ZT&&!S.wins[id].min?' on':'')+'" data-a="task" data-id="'+id+'">'+WIN[id].t.replace('Свойства: ','')+'</button>').join('')}
+function icons(){const unread=S.mails.filter(m=>!m.read).length;$('icons').innerHTML=Object.keys(WIN).filter(id=>avail(id)&&id!='ufeed').map(id=>'<div class="ico" data-a="open" data-id="'+id+'">'+ICONS[WIN[id].i]+'<span>'+WIN[id].t.replace('Свойства: ','')+(id=='mail'&&unread?' ('+unread+')':'')+'</span></div>').join('');
+ $('startmenu').innerHTML=Object.keys(WIN).map(id=>'<div class="smi'+(avail(id)?'':' dis')+'" data-a="open" data-id="'+id+'">'+ICONS[WIN[id].i].replace(/width="32" height="32"/,'width="20" height="20"')+' '+WIN[id].t+(avail(id)?'':' 🔒')+'</div>').join('')+'<div class="smi" data-a="reset">⟲ Новая игра</div>'}
+function spark(){const c=$('cv');if(!c||!c.getContext)return;const x=c.getContext('2d'),h=S.hist,mx=Math.max(...h,1e-9);x.fillStyle='#000';x.fillRect(0,0,380,110);x.strokeStyle='#0f0';x.beginPath();h.forEach((v,i)=>{const px=i/Math.max(h.length-1,1)*380,py=106-v/mx*100;i?x.lineTo(px,py):x.moveTo(px,py)});x.stroke()}
+// ---------- ввод ----------
+let DRAG=null;
+document.addEventListener('pointerdown',e=>{const t=e.target.closest('[data-drag]');if(!t||e.target.closest('[data-a]'))return;const id=t.dataset.drag,s=S.wins[id];s.z=++ZT;DRAG={id,dx:e.clientX-s.x,dy:e.clientY-s.y};render();e.preventDefault()});
+document.addEventListener('pointermove',e=>{if(!DRAG)return;const s=S.wins[DRAG.id];s.x=e.clientX-DRAG.dx;s.y=e.clientY-DRAG.dy;fitWin(s);const el=$('w_'+DRAG.id);el.style.left=s.x+'px';el.style.top=s.y+'px'});
+document.addEventListener('pointerup',()=>{DRAG=null});
+window.addEventListener('resize',()=>{Object.values(S.wins).forEach(fitWin);render()});
+function react(p,dir){if(dir>0){p.man=2.5;p.tg=has('target')?audFrom(TG):null}else{p.man=-5;p.tg=null}const st=p.story&&S.act.find(x=>x.id==p.story);if(st){st.reacted=true;if(dir>0)st.up=true;else st.dn=true}}
+document.addEventListener('click',e=>{if(e.target.id=='mapcv'){const r=e.target.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;let best=null,bd=144;S.A.forEach(a=>{const[px,py]=MAPV.P(a);const d=(px-mx)**2+(py-my)**2;if(d<bd){bd=d;best=a}});if(best&&has('profiles')){MAPV.sel=best.id;$('prof').innerHTML=profHTML(best)}else if(best)$('mapinfo').textContent=best.n+', '+DISTRICTS[best.d]+' (профили — после функции «Профили людей»)';drawMap();return}
+ const t=e.target.closest('[data-a],[data-w]');if(!$('startmenu').contains(e.target)&&!e.target.closest('#startbtn'))$('startmenu').style.display='none';if(!t)return;const d=t.dataset,a=d.a,i=+d.i;
+ if(d.w&&!a){if(S.dict[d.w])delete S.dict[d.w];else{S.dict[d.w]=1;toast('В словаре: «'+d.w+'»')}['feed','news','dict','rules'].forEach(draw);return}
+ if(a=='open'){openWin(d.id);$('startmenu').style.display='none'}
+ if(a=='wclose'){S.wins[d.id].open=false;render()}if(a=='wmin'){S.wins[d.id].min=true;render()}
+ if(a=='wmax'){const s=S.wins[d.id];if(s.w<window.innerWidth-20){s.pw=[s.x,s.y,s.w,s.h];s.x=0;s.y=0;s.w=window.innerWidth;s.h=window.innerHeight-40}else if(s.pw)[s.x,s.y,s.w,s.h]=s.pw;render()}
+ if(a=='task'){const s=S.wins[d.id];if(s.min||s.z!=ZT){s.min=false;s.z=++ZT}else s.min=true;render()}
+ if(a=='start'){const m=$('startmenu');m.style.display=m.style.display=='block'?'none':'block'}
+ if(a=='fn'&&buy('fn',d.id)){const n=FN.find(x=>x.id==d.id);toast('Установлено: <b>'+n.n+'</b>');const wid=Object.keys(WIN).find(k=>WIN[k].need==n.id&&k!='ufeed');icons();if(wid)openWin(wid);osUp();draw('fn');draw('up')}
+ if(a=='upg'&&buy('up',d.id)){const u=UPS.find(x=>x.id==d.id);toast('Апгрейд: <b>'+u.n+'</b> — '+u.d);draw('up');draw('fn')}
+ if(a=='srv'&&canBuy()){S.m-=price();S.nb++;S.srv++;draw('infra')}
+ if(a=='pup'||a=='pdn'){const p=findPost(+d.p);if(p){react(p,a=='pup'?1:-1);['feed','news','ufeed'].forEach(draw)}}
+ if(a=='wave'){MAPV.hl=+d.p;openWin('map');setTimeout(()=>{MAPV.hl=null},8000)}
+ if(a=='unprof'){MAPV.sel=null;$('prof').innerHTML=''}
+ if(a=='ufeed'){UF=+d.id;openWin('ufeed');draw('ufeed')}
+ if(a=='undict'){delete S.dict[d.w];draw('dict')}
+ if(a=='mkrule'){const D=DRAFT;const r={on:rulesUsed()<cpuTotal(),cond:{word:D.word,topic:+D.topic,stance:+D.stance,emo:+D.emo,src:D.src},aud:has('raud')?{d:+D.d,issue:+D.issue,side:+D.side,age:D.age,cl:+D.cl}:null,w:+D.w};S.rules.push(r);S.rulesMade=(S.rulesMade||0)+1;toast(r.on?'Правило создано':'Правило создано, но выключено: не хватает мощности');draw('rules')}
+ if(a=='duprule'){const r=JSON.parse(JSON.stringify(S.rules[i]));r.on=rulesUsed()<cpuTotal();S.rules.push(r);S.rulesMade=(S.rulesMade||0)+1;draw('rules')}
+ if(a=='unrule'){S.rules.splice(i,1);draw('rules')}
+ if(a=='reset'){if(S.resetAsk){try{localStorage.removeItem('lentaos4')}catch(x){}location.reload()}else{S.resetAsk=1;toast('Нажми «Новая игра» ещё раз, чтобы стереть прогресс');setTimeout(()=>S.resetAsk=0,4000)}}
+ stats()});
+document.addEventListener('change',e=>{const d=e.target.dataset;if(e.target.id=='mapc'){S.mapc=e.target.value;drawMap()}if(e.target.id=='tg')TG=e.target.value;
+ if(d.df){DRAFT[d.df]=e.target.value;$('b_rules').innerHTML=WIN.rules.r()}
+ if(d.ron!=null){const r=S.rules[+d.ron];if(e.target.checked&&rulesUsed()>=cpuTotal()){e.target.checked=false;toast('Не хватает мощности.');return}r.on=e.target.checked;draw('rules')}
+ if(d.r=='feedT'){S.feedT=+e.target.value;S.nextFeed=Math.min(S.nextFeed,S.t+S.feedT);draw('feed')}});
+const OSC=[['#008080','95'],['#3a6ea5','98'],['#5a7d5a','ME'],['#6b4a8a','2000'],['#245edb','XP']];
+function osUp(){const i=Math.min(4,Math.floor(S.nb/12));if(S.osI!=null&&i>S.osI)toast('Обновление системы: <b>ЛентаОС '+OSC[i][1]+'</b>');S.osI=i;document.body.style.background=OSC[i][0];$('osn').textContent='ЛентаОС '+OSC[i][1]}
+function stats(){$('tray').innerHTML='👥 '+f(S.ema.users||0)+' &nbsp; 💲'+f(S.m)+' &nbsp; '+String(new Date().getHours()).padStart(2,'0')+':'+String(new Date().getMinutes()).padStart(2,'0')}
+// ---------- сохранение ----------
+function save(){try{const c=Object.assign({},S,{act:S.act.map(s=>Object.assign({},s,{seen:[...(s.seen||[])]}))});localStorage.setItem('lentaos4',JSON.stringify(c))}catch(e){}}
+function load(){try{const o=JSON.parse(localStorage.getItem('lentaos4'));if(o&&o.v==5){S=Object.assign(BASE(),o);S.act.forEach(s=>s.seen=new Set(s.seen||[]));S.batch=[];AMAP.clear();S.A.forEach(a=>AMAP.set(a.id,a));return true}}catch(e){}return false}
+let lastFeedAt=-1;
+function tick(){S.ema.users_o=S.ema.users;S.ema.inc_o=S.ema.inc;step();stats();
+ Object.keys(WIN).forEach(id=>{if(WIN[id].live&&id!='feed'&&S.wins[id]&&S.wins[id].open&&!S.wins[id].min)draw(id)});
+ // лента перерисовывается только при новой пачке, чтобы посты не прыгали
+ if(S.wins.feed&&S.wins.feed.open){if(S.batchAt!==lastFeedAt){lastFeedAt=S.batchAt;draw('feed')}else{const b=$('b_feed');if(b){const l=Math.max(0,S.nextFeed-S.t);const el=b.querySelector('.row span b');if(el)el.textContent=l+' с';const pr=b.querySelector('.prog i');if(pr)pr.style.width=clamp((1-l/S.feedT)*100,0,100)+'%'}}}
+ if(S.wins.map&&S.wins.map.open)drawMap();if(S.t%15==0){icons();render()}if(S.t%5==0)save()}
+function boot(){if(!load()){init();['net','feed','fn','mail'].forEach(wstate);const vw=window.innerWidth;Object.assign(S.wins.feed,{x:96,y:8,open:true});Object.assign(S.wins.net,{x:Math.min(590,vw-310),y:8,open:true});Object.assign(S.wins.fn,{x:Math.min(590,vw-570),y:270,open:true});mail(face('Директор',99)+'<b>Директор:</b> Привет, алгоритм. Тут пара десятков людей — мои друзья и их друзья. Сделай так, чтобы они сидели подольше. Посты копятся во «Входящих» — поднимай то, что цепляет, закапывай скучное. Живём с рекламы, за свет и налоги платим раз в месяц.')}
+ else for(let i=0;i<20;i++)POOL.push(agentPost(pk(S.A)));ZT=Math.max(10,...Object.values(S.wins).map(w=>w.z||0));osUp();icons();Object.values(S.wins).forEach(fitWin);render();stats();setInterval(tick,1000)}
+if(!window.NOBOOT)boot();
+</script></body></html>

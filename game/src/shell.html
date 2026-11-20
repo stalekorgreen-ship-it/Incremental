@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ЛЕНТА.EXE — ЛентаОС</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden}
+body{background:#008080;font:12px Tahoma,Verdana,'Segoe UI',sans-serif;color:#000;transition:background 1.5s;user-select:none}
+#icons{position:absolute;left:6px;top:6px;bottom:46px;display:flex;flex-direction:column;flex-wrap:wrap;gap:6px;align-content:flex-start;z-index:1}
+.ico{width:78px;display:flex;flex-direction:column;align-items:center;gap:3px;color:#fff;text-align:center;cursor:pointer;padding:3px;font-size:11px;text-shadow:1px 1px #000}
+.ico:hover span{background:#000080;outline:1px dotted #fff}
+#wins{position:absolute;inset:0 0 40px 0}
+.w95{background:#c0c0c0;padding:2px;border:2px solid;border-color:#fff #000 #000 #fff;box-shadow:inset -1px -1px 0 #808080,inset 1px 1px 0 #dfdfdf}
+.win{position:absolute;display:flex;flex-direction:column;resize:both;overflow:hidden;min-width:220px;min-height:120px}
+.tb{background:linear-gradient(90deg,#808080,#b5b5b5);color:#dcdcdc;font-weight:bold;padding:3px 4px;display:flex;justify-content:space-between;align-items:center;cursor:move;flex:none;touch-action:none}
+.win.active .tb,.tst .tb{background:linear-gradient(90deg,#000080,#1084d0);color:#fff}
+.ctl{display:flex;gap:2px}.ctl i{font-style:normal;width:16px;height:14px;background:#c0c0c0;color:#000;font-size:11px;text-align:center;line-height:11px;border:1px solid;border-color:#fff #000 #000 #fff;cursor:pointer}
+.bd{padding:6px;display:flex;flex-direction:column;gap:6px;overflow:auto;flex:1;user-select:text}
+.b95{font:12px Tahoma,Verdana,sans-serif;background:#c0c0c0;color:#000;padding:3px 8px;min-height:24px;cursor:pointer;border:2px solid;border-color:#fff #000 #000 #fff;box-shadow:inset -1px -1px 0 #808080,inset 1px 1px 0 #dfdfdf;white-space:nowrap}
+.b95:active,.b95.on{border-color:#000 #fff #fff #000;box-shadow:inset 1px 1px 0 #808080;background:#d4d4d4}
+.b95:disabled{color:#808080;text-shadow:1px 1px #fff;cursor:default}
+select{font:12px Tahoma,sans-serif;background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080;max-width:180px}
+fieldset{border:2px groove #fff;padding:6px;margin:0;display:flex;flex-direction:column;gap:4px}legend{padding:0 3px}
+.lbl{color:#404040;font-size:11px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px}.kv b{font-size:13px}
+.up{color:#008000}.dn{color:#c00}.eq{color:#808080;font-size:9px}
+.feedbox{background:#fff;flex:1;overflow:auto;border:2px solid;border-color:#808080 #fff #fff #808080;min-height:200px}
+.post{display:flex;gap:8px;padding:8px;border-bottom:1px solid #e4e4e4;animation:in .35s}.post.hot{background:#fffbe0}
+@keyframes in{from{background:#c6d6ff}}
+.av{flex:none;width:40px;height:40px;border:2px solid;border-color:#808080 #fff #fff #808080;overflow:hidden}.av svg{width:36px;height:36px;display:block}
+.face svg{vertical-align:middle;border:1px solid #808080}
+.pc{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.pb{display:flex;flex-direction:column;gap:2px}
+.txt{font-size:13px;line-height:1.35}
+.pimg{border:2px solid;border-color:#808080 #fff #fff #808080;position:relative;line-height:0}.pimg.vid::after{content:'▶';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);line-height:1;color:#fff;background:rgba(0,0,0,.55);padding:6px 10px;font-size:16px}
+.meta{color:#555;font-size:11px}.tag{border:1px solid #808080;padding:0 3px;margin-left:4px;background:#f2f2f2}
+.wd{cursor:pointer;border-bottom:1px dotted #999}.wd:hover{background:#dfe6ff}.wd.in{background:#000080;color:#fff}
+.chip{display:inline-block;padding:2px 6px;margin:2px;border:1px solid #808080;background:#fff}.chip.sel{background:#000080;color:#fff}.chip a{cursor:pointer;color:#c00}
+.row{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 0;border-bottom:1px dotted #a0a0a0}
+.tree{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px}.node{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px;border-bottom:1px dotted #a0a0a0}
+.node.own{background:#d8d8f0}.node.lock{color:#808080}
+.t95{border-collapse:collapse;width:100%;background:#fff}.t95 th{background:#c0c0c0;border:1px solid #808080;text-align:left;font-weight:normal;padding:2px 4px;position:sticky;top:0}.t95 td{border:1px solid #e0e0e0;padding:2px 4px}
+.on i{display:inline-block;width:6px;background:#808080;margin-right:1px;vertical-align:bottom}
+.heat td{text-align:center;min-width:52px}.heat td:first-child{text-align:left;white-space:nowrap}.heat a{cursor:pointer;display:block;color:#000}.heat small{display:block;font-size:9px;opacity:.75}.heat td.run{background:#ffffe1}
+.scrollx{overflow:auto}
+.prog{height:14px;padding:2px;background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080}.prog i{display:block;height:100%;background:repeating-linear-gradient(90deg,#000080 0 8px,transparent 8px 10px)}.prog.red i{background:repeating-linear-gradient(90deg,#c00 0 8px,transparent 8px 10px)}
+.news{background:#fff;padding:5px;border:1px solid #808080}
+.mailrow .face{float:left;margin-right:6px}
+.card{background:#fff;border:1px solid #808080;padding:5px;display:flex;flex-direction:column;gap:3px}.card.ok{background:#eaffea}
+.rule{display:flex;flex-wrap:wrap;gap:4px;align-items:center;padding:4px;background:#fff;border:1px solid #808080}
+.delta{margin-left:auto;font-weight:bold;padding:0 4px}.delta.pos{color:#008000}.delta.neg{color:#c00}
+nav{position:fixed;left:0;right:0;bottom:0;height:40px;background:#c0c0c0;border-top:2px solid #fff;display:flex;align-items:center;gap:4px;padding:0 4px;z-index:99999}
+#tasks{display:flex;gap:3px;overflow:hidden;flex:1}.task{max-width:150px;overflow:hidden;text-overflow:ellipsis}
+.tray{padding:4px 10px;border:2px solid;border-color:#808080 #fff #fff #808080;white-space:nowrap}
+#startmenu{display:none;position:fixed;left:2px;bottom:40px;width:270px;max-height:75vh;overflow:auto;z-index:100000;padding:2px}
+.smi{display:flex;align-items:center;gap:6px;padding:4px 6px;cursor:pointer}.smi:hover{background:#000080;color:#fff}.smi.dis{color:#808080}
+#toast{position:fixed;right:6px;bottom:46px;width:290px;display:flex;flex-direction:column;gap:4px;z-index:99998}
+.tst .bd{background:#ffffe1}
+.float{position:fixed;pointer-events:none;font-weight:bold;color:#008000;text-shadow:1px 1px #fff;animation:fl .9s forwards;z-index:100001}
+@keyframes fl{to{transform:translateY(-40px);opacity:0}}
+ul{margin:0;padding-left:18px}
+@media(max-width:700px){#icons{flex-direction:row;bottom:auto;right:6px}.ico{width:64px}}
+.maptools{display:flex;gap:8px;align-items:center;flex:none}.mapwrap{position:relative;flex:1;min-height:200px;border:2px solid;border-color:#808080 #fff #fff #808080}#mapcv{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair}
+#w_map .bd{overflow:hidden}.pcard{position:absolute;right:6px;top:6px;width:250px;max-height:calc(100% - 12px);overflow:auto;display:flex;flex-direction:column}
+.vrow{display:grid;grid-template-columns:80px 1fr;gap:4px;align-items:center;font-size:11px}.vbar{position:relative;height:8px;background:#eee;border:1px solid #808080}.vbar::after{content:'';position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:#000}.vbar i{position:absolute;top:0;bottom:0}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.rule .rtxt{flex:1;min-width:200px}.rule.offr{opacity:.55}.rf{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.post.story{background:#eef6ff}.post.upd{border-left:4px solid #2e7d32}.post.dnd{opacity:.5;border-left:4px solid #c62828}
+.pb .b95{min-width:30px}
+.sep{background:#c0c0c0;padding:3px 6px;font-weight:bold;border-top:1px solid #808080;border-bottom:1px solid #808080;position:sticky;top:0}
+.post.newsp{background:#f4f0ff}.news.res{border-left:4px solid #000080}.tag.up{background:#d9f2d9}.tag.dn{background:#f6d6d6}
+</style></head><body>
+<div id="icons"></div><div id="wins"></div><div id="toast"></div>
+<div id="startmenu" class="w95"></div>
+<nav><button class="b95" id="startbtn" data-a="start" style="font-weight:bold">⊞ Пуск</button><span class="b95 on" id="osn">ЛентаОС 95</span><div id="tasks"></div><span class="tray" id="tray"></span></nav>
+<script>
