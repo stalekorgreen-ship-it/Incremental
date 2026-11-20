@@ -102,7 +102,7 @@ const TECH_RAW=[
 ['campaign','G',5,'Кампания Директора',['globalan','planetdc'],'финал: Директор идёт на планетарные выборы',{},1]];
 const TECH=TECH_RAW.map(([id,b,e,n,req,d,eff,nw],i)=>({id,b,e,n,req,d,eff:eff||{},nw:!!nw,i}));
 const TID={};TECH.forEach(t=>TID[t.id]=t);
-const EBASE=[40,14000,3e5,2.5e6,5e7,1e9];
+const EBASE=[40,14000,2.4e5,2.5e6,7e7,1.6e9];
 (function(){const c={};TECH.forEach(t=>{const j=c[t.e]=(c[t.e]||0)+1;t.p=Math.round(EBASE[t.e]*Math.pow(1.38,j-1)/5)*5;if(t.b=='G')t.p=Math.round(t.p*1.0/5)*5})})();
 function techEff(k){let s=0;for(const t of TECH)if(S.f[t.id]&&t.eff[k]!=null)s+=t.eff[k];return s}
 const era=()=>S.f.era5?5:S.f.era4?4:S.f.era3?3:S.f.era2?2:S.f.era1?1:0;
