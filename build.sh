@@ -1,5 +1,5 @@
 #!/bin/sh
-# Сборка: game/index.html из исходников (imgs.js — встроенные аватарки и фото)
-cd "$(dirname "$0")/game/src"
-cat shell.html base.js world.js art.js imgs.js stories.js chains.js sim.js tech.js scale.js explain.js ui.js lab.js ui2.js > ../index.html
-echo '</script></body></html>' >> ../index.html
+# Сборка ЛЕНТА.EXE v8 → game/index.html. Старая версия (регионы, политика) — ./build_legacy.sh → game/legacy.html
+cd "$(dirname "$0")/game"
+cat src/shell.html src/art.js src/imgs.js src8/data8.js src8/sim8.js src8/sys8.js src8/ui8.js > index.html
+echo '</script></body></html>' >> index.html
