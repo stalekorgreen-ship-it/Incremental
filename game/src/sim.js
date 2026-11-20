@@ -8,7 +8,7 @@ const NT=TOPICS.length,BYT=NT;
 function normW(w){return w.toLowerCase().replace(/[^a-zа-яё0-9]/gi,'')}
 const KEYS={};TOPICS.forEach((t,i)=>t.k.forEach(k=>KEYS[normW(k)]={t:i,w:k}));
 const STOP=new Set(['это','только','очень','какая','всем','если','когда','потому','чтобы','которые','через','после','было','будет','уже','сегодня','опять','снова','просто','весь','всех','вечер','своя','свой','меня','тебя','нас','вас','они','него','неё','есть','были','была']);
-const toks=t=>t.split(/\s+/).map(normW).filter(w=>w.length>=4&&!STOP.has(w));
+const toks=t=>t.split(/\s+/).map(normW).filter(w=>KEYS[w]||(w.length>=4&&!STOP.has(w)));
 const MONTH=300;
 const NAV=100,PCAT=["abs", "abs", "abs", "abs", "abs", "abs", "abs", "abs", "abs", "abs", "abs", "abs", "abs", "abs", "abs", "food", "food", "food", "food", "food", "food", "food", "food", "food", "animals", "animals", "animals", "animals", "animals", "animals", "animals", "animals", "games", "games", "games", "games", "games", "games", "games", "games", "games", "people", "people", "people", "people", "people", "people", "people", "people", "people", "people", "people", "people", "people", "daily", "daily", "daily", "daily", "daily", "daily", "things", "things", "things", "things", "things", "things", "things", "things", "things", "nature", "nature", "nature", "nature", "nature", "nature", "nature", "nature", "nature", "nature", "draw", "draw", "draw", "draw", "draw", "draw", "draw", "draw", "draw", "selfie", "selfie", "selfie", "selfie", "selfie", "selfie", "selfie", "street", "street", "street", "street", "street"];
 const TOPIC_PH={9:['food'],4:['animals'],7:['games'],6:['games'],2:['nature'],12:['people','selfie'],3:['street','people'],13:['street'],1:['street','people'],0:['street','people'],8:['people'],11:['draw','daily'],5:['things','people'],10:['daily','people']};
@@ -26,7 +26,7 @@ function mkAgent(o={}){const r=Math.random;const male=o.male!=null?o.male:r()<.5
  const age=[16,22,30,42,58,70][Math.floor(r()*6)];const it=TOPICS.map(()=>Math.pow(r(),2.2));if(age<20){it[7]+=.5;it[11]+=.4}if(age>55){it[5]+=.4;it[10]+=.3;it[9]+=.2}if(d==6)it[9]+=.4;if(d==5)it[11]+=.3;if(d==2)it[0]+=.3,it[13]+=.3;
  // взгляды на старте умеренные: пузыри должны появляться от ленты
  const v=ISSUES.map((x,i)=>clamp(gauss()*.22+(i==5?(age-40)/200:0)+(i==3?(40-age)/250:0),-1,1));
- return {id:++S.nid,n:o.n||(fn+' '+(male?ln:lnF(ln))),male,age,d,it,v,act:.4+r()*.6,ads:.4+r()*1.1,fr:[],x:gauss()*.3,y:gauss()*.3,mood:0,char:o.char||null,seed:o.seed||0,eng:0,feed:[],last:null,cl:-1}}
+ return {id:++S.nid,n:o.n||(fn+' '+(male?ln:lnF(ln))),male,age,d,it,v,act:.4+r()*.6,ads:.4+r()*1.1,ph:Math.pow(r(),2),arg:Math.pow(r(),2),lng:Math.pow(r(),2),fr:[],x:gauss()*.3,y:gauss()*.3,mood:0,char:o.char||null,seed:o.seed||0,eng:0,feed:[],last:null,cl:-1}}
 function befriend(a,b){if(a===b||a.fr.includes(b.id)||a.fr.length>14||b.fr.length>14)return;a.fr.push(b.id);b.fr.push(a.id)}
 function unfriend(a,b){a.fr=a.fr.filter(x=>x!=b.id);b.fr=b.fr.filter(x=>x!=a.id)}
 function addAgent(a,host){S.A.push(a);AMAP.set(a.id,a);if(host)befriend(host,a);const pool=S.A.filter(b=>b!==a&&b.d==a.d);for(let i=0;i<3&&pool.length;i++)befriend(a,pool.splice(Math.floor(Math.random()*pool.length),1)[0]);if(Math.random()<.5&&S.A.length>2)befriend(a,pk(S.A))}
@@ -35,7 +35,7 @@ const agree=(a,b)=>{let s=0;for(let i=0;i<NI;i++)s+=a.v[i]*b.v[i];return s};
 // ---------- посты ----------
 let POOL=[],pid=0;
 function stanceText(t,s,e){if(ISSUE_OF(t)<0)return e==3?pk(NICE):pk(NEU.concat(NICE));return s>.3?pk(PRO):s<-.3?pk(CON):pk(NEU)}
-function post(o){const p=Object.assign({id:++pid,born:S.t,rx:0,neg:0,sh:new Set(),seenN:0,man:0,tg:null,img:false,vid:false,s:0,e:4,h:.5},o);p.toks=toks(p.txt);if(p.img)p.ph=photoFor(p.t);p.av=p.avi!=null?p.avi:avOf(p.auN||'');return p}
+function post(o){const p=Object.assign({id:++pid,born:S.t,rx:0,neg:0,sh:new Set(),seenN:0,man:0,tg:null,img:false,vid:false,s:0,e:4,h:.5},o);p.toks=toks(p.txt);if(p.img)p.ph=photoFor(p.t);p.toks.push(...postTags(p));p.av=p.avi!=null?p.avi:avOf(p.auN||'');return p}
 function agentPost(au,ev){let t;if(ev&&Math.random()<.7)t=ev.t;else{const w=au.it.map((x,i)=>x*S.trend[i]);let r=Math.random()*w.reduce((x,y)=>x+y),i=0;for(;i<w.length;i++){r-=w[i];if(r<=0)break}t=Math.min(i,NT-1)}
  if(!ev&&Math.random()<.15)return post({au:au.id,auN:au.n,t:BYT,txt:pk(['Всем доброе утро!','Пятница, ура','Опять дождь','Кофе — лучший друг','Устал как собака','Посоветуйте сериал','Кот спит на клавиатуре','Пробка на мосту','Купил новые кроссы','Кто на шашлыки в субботу?','Ремонт третий месяц','Сделала пирог, все довольны']),h:.2,e:0});
  const is=ISSUE_OF(t);const s=is>=0?clamp(au.v[is]+gauss()*.3,-1,1):0;const k=ev&&ev.t==t?pk(ev.k):pk(TOPICS[t].k);
@@ -46,9 +46,9 @@ function agentPost(au,ev){let t;if(ev&&Math.random()<.7)t=ev.t;else{const w=au.i
  else txt=pk(['Почему все молчат про','Вы тоже устали от темы','Как вам новости про','Что думаете про'])+' «'+k+'»?'+(sec?' '+sec:'');
  return post({au:au.id,auN:au.n,t,s,e,txt:txt[0].toUpperCase()+txt.slice(1),h:clamp(.25+Math.abs(s)*.4+(op?.15:0)+(e==1?.15:0)+gauss()*.08,0,1),img:has('photo')&&Math.random()<.45,vid:has('video')&&Math.random()<.25,ev:ev?ev.id:null})}
 // ---------- аудитории и правила ----------
-function audMatch(u,a){if(!u)return true;if(u.d!=null&&u.d>=0&&a.d!=u.d)return false;if(u.issue!=null&&u.issue>=0){const v=a.v[u.issue];if(u.side>0&&v<.15)return false;if(u.side<0&&v>-.15)return false}
+function audMatch(u,a){if(!u)return true;if(u.cat!=null&&u.cat!==''&&S.lab){const c=S.lab.cats.find(x=>x.id==u.cat);if(c&&!isMember(a,c))return false}if(u.d!=null&&u.d>=0&&a.d!=u.d)return false;if(u.issue!=null&&u.issue>=0){const v=a.v[u.issue];if(u.side>0&&v<.15)return false;if(u.side<0&&v>-.15)return false}
  if(u.age=='young'&&a.age>25)return false;if(u.age=='old'&&a.age<50)return false;if(u.cl!=null&&u.cl>=0&&a.cl!=u.cl)return false;return true}
-function condMatch(c,p){if(c.word&&!p.toks.includes(c.word))return false;if(c.topic!=null&&c.topic>=0&&p.t!=c.topic)return false;if(c.stance){if(c.stance>0&&p.s<=.25)return false;if(c.stance<0&&p.s>=-.25)return false}
+function condMatch(c,p){if(c.word&&!p.toks.includes(c.word))return false;if(c.words&&c.words.length&&!c.words.some(w=>p.toks.includes(w)))return false;if(c.topic!=null&&c.topic>=0&&p.t!=c.topic)return false;if(c.stance){if(c.stance>0&&p.s<=.25)return false;if(c.stance<0&&p.s>=-.25)return false}
  if(c.emo!=null&&c.emo>=0&&p.e!=c.emo)return false;if(c.src=='story'&&!p.story)return false;if(c.src=='news'&&!p.news)return false;if(c.src=='people'&&(p.story||p.news||p.wave))return false;if(c.src=='wave'&&!p.wave)return false;if(c.src=='pol'&&p.cand==null&&!p.dir)return false;return true}
 const cpuTotal=()=>Math.max(1,3+techEff('cpu')+S.srv*12-S.cpuLaw-(S.auto&&S.auto.goal!='off'&&has('autopilot')?10:0));
 const upEff=k=>techEff(k);
@@ -84,8 +84,8 @@ function step(){S.t++;const nA=S.A.length;
   if(negs)for(const[os,p]of negs)if(os>th){p.pv=(p.pv||0)+1;CT.pv++;if(lastP){const rp=peOf(a,lastP)*.8;p.prep=(p.prep||0)+rp;p.pirep=(p.pirep||0)+rp*pinc1*advMult(a)*(lastP.vid?1.6:1)}const is=p.t<NT?ISSUE_OF(p.t):-1;const agr=is>=0?a.v[is]*p.s:0;const pe=sigm(-1.4+2*p.h+1.5*(p.t>=NT?.3:a.it[p.t])+1.4*Math.abs(agr)+(p.img?.25:0)+(p.vid?.3:0)+(p.char?.6:0));p.prx=(p.prx||0)+pe;CT.prx+=pe;const pi=pe*pinc1*advMult(a)*(p.vid?1.6:1);p.pinc=(p.pinc||0)+pi;CT.pinc+=pi;if(agr<-.12){p.pneg=(p.pneg||0)+pe;CT.pneg+=pe}}
   a.feed=best.map(b=>b[1].id);{const ts=new Set(best.map(b=>b[1].t));a.div=(a.div==null?.6:a.div)*.95+.05*(best.length?ts.size/best.length:1)}
   let bi=0;for(const[,p,push,,mg]of best){const posM=best.length>1?1.3-.5*bi/(best.length-1):1.15;bi++;const pw=push?1:.07;p.seenN++;if(mg){p.mv=(p.mv||0)+1;CT.mv++;if(runner){const rp=peOf(a,runner[1])*.8,ri=rp*pinc1*advMult(a)*(runner[1].vid?1.6:1);p.drx=(p.drx||0)+rp;p.dinc=(p.dinc||0)+ri;CT.drx=(CT.drx||0)+rp;CT.dinc=(CT.dinc||0)+ri}}S.stat.views++;if(push&&p.story&&!p.man){const st=S.act.find(x=>x.id==p.story);if(st){st.up=true;st.reacted=true}}if(p.story)storySeen(p,a);const is=p.t<NT?ISSUE_OF(p.t):-1;const agr=is>=0?a.v[is]*p.s:0;const ti=p.t>=NT?.3:a.it[p.t];
-   const pe0=sigm(-1.4+2*p.h+1.5*ti+1.4*Math.abs(agr)+(p.img?.25:0)+(p.vid?.3:0)+(p.char?.6:0)+rxB+techEff('rx')-(has('divers')?.12:0));
-   a.vw=(a.vw||0)+1;const pe=Math.min(.97,pe0*posM);if(Math.random()<pe){a.got=(a.got||0)+1;const angry=agr<-.12;p.rx++;eng++;a.eng++;a.last=p.txt;const am=advMult(a),vm=p.vid?(has('vidads')?2.9:1.6):1;const base=UU*ENGV*cpmM*adF*slow;const val=vm*base*am;inc+=val;incT+=vm*base*(am-1);incV+=(vm-1)*base;if(mg){p.mrx=(p.mrx||0)+1;p.minc=(p.minc||0)+val;CT.mrx++;CT.minc+=val}
+   const pe0=sigm(-1.4+2*p.h+1.5*ti+1.4*Math.abs(agr)+(p.img?.25+.6*(a.ph||0):0)+(p.e==1?.6*(a.arg||0):0)+(p.txt.length>80?.4*(a.lng||0):0)+(p.vid?.3:0)+(p.char?.6:0)+rxB+techEff('rx')-(has('divers')?.12:0));
+   a.vw=(a.vw||0)+1;const pe=Math.min(.97,pe0*posM);{const dw=dwellOf(a,p,pe0);p.dw=(p.dw||0)+dw;wordObs(a,p,dw)}if(Math.random()<pe){a.got=(a.got||0)+1;const angry=agr<-.12;p.rx++;eng++;a.eng++;a.last=p.txt;const am=advMult(a),vm=p.vid?(has('vidads')?2.9:1.6):1;const base=UU*ENGV*cpmM*adF*slow;const val=vm*base*am;inc+=val;incT+=vm*base*(am-1);incV+=(vm-1)*base;if(mg){p.mrx=(p.mrx||0)+1;p.minc=(p.minc||0)+val;CT.mrx++;CT.minc+=val}
     if(angry){p.neg++;anger++;a.mood-=.015;if(mg){p.mneg=(p.mneg||0)+1;CT.mneg++}}else a.mood+=.008;if(p.story)storyReact(p,a,angry);
     // взгляды тянутся к тому, с чем человек согласен; несогласие слегка отталкивает
     if(is>=0&&mg)p.mdv=(p.mdv||0)+Math.abs(.025*pw*(p.s-a.v[is])*Math.abs(p.s));if(is>=0)a.v[is]=clamp(a.v[is]+.025*(p.pers&&has('celebs')?Math.max(pw,.4):pw)*(p.s-a.v[is])*Math.abs(p.s),-1,1);
@@ -110,7 +110,7 @@ function step(){S.t++;const nA=S.A.length;
  if(S.t%10==0){clusters();S.polar=polarization()}
  ['mv','mrx','minc','pv','prx','pinc','mneg','pneg','mjoin','drx','dinc'].forEach(k=>S.stat[k]=(S.stat[k]||0)+(CT[k]||0));S.stat.inc=(S.stat.inc||0)+tot;S.stat.vinc=(S.stat.vinc||0)+inc0;S.stat.uu=UU;
  if(S.t%10==0){S.stat.rjoin=Math.round(rs.joined);S.statH.push(Object.assign({t:S.t,users:S.A.length},S.stat));if(S.statH.length>30)S.statH.shift();S.stat={join:0,bored:0,angry:0,views:0,rx:0,sh:0,left:0}}
- layoutStep();newsTick()}
+ layoutStep();newsTick();labTick()}
 function churnCause(a){const hab=1-Math.min(.6,techEff('habit')+Math.min(.2,(a.age2||0)/3000));const r=Math.random;
  if(a.sat<.15&&r()<.01*hab)return 'bored';if(a.mood<-1&&r()<.015*hab)return 'angry';
  const ma=a.v.reduce((s,x)=>s+Math.abs(x),0)/NI;if(S.polar>.42&&ma>.55&&a.mood<0&&r()<(S.polar-.42)*.04*hab)return 'polar';
@@ -190,6 +190,9 @@ function newsTick(){if(S.t>=(S.nextFlavor||8)){const n=pk(FLAVOR);S.news.unshift
   if(Math.random()<.45){const ev={id:'e'+S.t,t:n[0],k:TOPICS[n[0]].k,head:n[1].replace(/[.!].*$/,'').split(',')[0]};S.act.push({id:ev.id,k:'event',ev,evEnd:S.t+60,done:false,queue:[]});S.trend[n[0]]+=1.5}}
  S.act=S.act.filter(s=>s.k!='event'||s.evEnd>S.t);S.news.length=Math.min(80,S.news.length)}
 function newsItem(st){}
+function postTags(p){const t=[];if(p.img)t.push('#фото');if(p.vid)t.push('#видео');if(p.e==1)t.push('#злость');if(p.e==0||p.e==3)t.push('#позитив');if(/\?/.test(p.txt))t.push('#вопрос');if(p.txt.length>80)t.push('#длинный');if(p.txt.length<35)t.push('#короткий');return t}
+// время удержания: сколько секунд человек проводит на посте. Зависит от скрытых интересов и черт человека
+function dwellOf(a,p,pe){const ti=p.t>=NT?.25:a.it[p.t];let d=1.5+9*ti+5*pe+(p.img?5*(a.ph||0):0)+(p.e==1?6*(a.arg||0):0)+(p.txt.length>80?6*(a.lng||0)-1:0)+(p.vid?3:0);return Math.max(.5,d*(.8+Math.random()*.4))}
 function peOf(a,p){const is=p.t<NT?ISSUE_OF(p.t):-1;const agr=is>=0?a.v[is]*p.s:0;return sigm(-1.4+2*p.h+1.5*(p.t>=NT?.3:a.it[p.t])+1.4*Math.abs(agr)+(p.img?.25:0)+(p.vid?.3:0)+(p.char?.6:0))}
 function storyOk(d){return (d.era||0)<=era()&&(!d.req||d.req())}
 function init(){for(let i=0;i<24;i++)addAgent(mkAgent(),S.A.length?pk(S.A):null);for(let i=0;i<20;i++)POOL.push(agentPost(pk(S.A)));S.mon.start=0}
