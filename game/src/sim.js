@@ -67,40 +67,48 @@ function step(){S.t++;const nA=S.A.length;
  POOL=POOL.filter(p=>S.t-p.born<150);if(POOL.length>160)POOL=POOL.slice(-160);
  const RL=S.rules.filter(r=>r.on);POOL.forEach(p=>{p.rm=RL.map(r=>condMatch(r.cond,p))});
  const k=K();let eng=0,anger=0,inc=0,incT=0,incV=0;const UU=U(),adF=adFactor(),rxB=S.boostRx>S.t?.4:0,slow=S.slow>S.t?.5:1,cpmM=1+techEff('cpm');
- for(const a of S.A){if(S.off[a.d]>S.t||Math.random()>a.act)continue;const fr=a.fr;let best=[];
+ const CT=S.ctl={mv:0,mrx:0,minc:0,mneg:0,pv:0,prx:0,pinc:0,pneg:0};const pinc1=UU*ENGV*cpmM*adF*slow;
+ for(const a of S.A){if(S.off[a.d]>S.t||Math.random()>a.act)continue;const fr=a.fr;let best=[],negs=null;
   for(const p of POOL){if(p.wave)continue;let sc=1.2*Math.exp(-(S.t-p.born)/40)+(has('likes')?Math.min(1.2,p.rx/(nA*.04+3)):0);
    if(p.man&&audMatch(p.tg,a))sc+=p.man;
    if(has('pers1'))sc+=a.it[Math.min(p.t,NT-1)]*(has('pers2')?1.4:.7)*(p.t==BYT?0:1);
    if(p.sh.size){let c=0;for(let i=0;i<fr.length&&c<3;i++)if(p.sh.has(fr[i]))c++;sc+=c*.6}
    if(p.au&&fr.includes(p.au))sc+=.7;
-   let push=p.man&&audMatch(p.tg,a)?1:0;for(let i=0;i<RL.length;i++)if(p.rm[i]&&audMatch(RL[i].aud,a)){sc+=RL[i].w;if(RL[i].w>0)push=1}
-   if(best.length<k||sc>best[best.length-1][0]){best.push([sc,p,push]);best.sort((x,y)=>y[0]-x[0]);if(best.length>k)best.pop()}}
+   let push=p.man&&audMatch(p.tg,a)?1:0,ctl=p.man&&audMatch(p.tg,a)?p.man:0;for(let i=0;i<RL.length;i++)if(p.rm[i]&&audMatch(RL[i].aud,a)){sc+=RL[i].w;ctl+=RL[i].w;if(RL[i].w>0)push=1}
+   if(ctl<0)(negs||(negs=[])).push([sc-ctl,p]);
+   if(best.length<=k||sc>best[best.length-1][0]){best.push([sc,p,push,ctl]);best.sort((x,y)=>y[0]-x[0]);if(best.length>k+1)best.pop()}}
+  const runner=best.length>k?best.pop():null; // пост, который был бы показан вместо управляемого
+  // разделение: управляемый показ — пост попал в ленту только благодаря ▲/правилу; предотвращённый — без ▼ попал бы
+  const th=best.length<k?-1e9:best[best.length-1][0];for(const b of best)b[4]=b[3]>0&&b[0]-b[3]<th;
+  const lastP=best.length?best[best.length-1][1]:null;
+  if(negs)for(const[os,p]of negs)if(os>th){p.pv=(p.pv||0)+1;CT.pv++;if(lastP){const rp=peOf(a,lastP)*.8;p.prep=(p.prep||0)+rp;p.pirep=(p.pirep||0)+rp*pinc1*advMult(a)*(lastP.vid?1.6:1)}const is=p.t<NT?ISSUE_OF(p.t):-1;const agr=is>=0?a.v[is]*p.s:0;const pe=sigm(-1.4+2*p.h+1.5*(p.t>=NT?.3:a.it[p.t])+1.4*Math.abs(agr)+(p.img?.25:0)+(p.vid?.3:0)+(p.char?.6:0));p.prx=(p.prx||0)+pe;CT.prx+=pe;const pi=pe*pinc1*advMult(a)*(p.vid?1.6:1);p.pinc=(p.pinc||0)+pi;CT.pinc+=pi;if(agr<-.12){p.pneg=(p.pneg||0)+pe;CT.pneg+=pe}}
   a.feed=best.map(b=>b[1].id);{const ts=new Set(best.map(b=>b[1].t));a.div=(a.div==null?.6:a.div)*.95+.05*(best.length?ts.size/best.length:1)}
-  for(const[,p,push]of best){const pw=push?1:.07;p.seenN++;S.stat.views++;if(push&&p.story&&!p.man){const st=S.act.find(x=>x.id==p.story);if(st){st.up=true;st.reacted=true}}if(p.story)storySeen(p,a);const is=p.t<NT?ISSUE_OF(p.t):-1;const agr=is>=0?a.v[is]*p.s:0;const ti=p.t>=NT?.3:a.it[p.t];
+  let bi=0;for(const[,p,push,,mg]of best){const posM=best.length>1?1.3-.5*bi/(best.length-1):1.15;bi++;const pw=push?1:.07;p.seenN++;if(mg){p.mv=(p.mv||0)+1;CT.mv++;if(runner){const rp=peOf(a,runner[1])*.8,ri=rp*pinc1*advMult(a)*(runner[1].vid?1.6:1);p.drx=(p.drx||0)+rp;p.dinc=(p.dinc||0)+ri;CT.drx=(CT.drx||0)+rp;CT.dinc=(CT.dinc||0)+ri}}S.stat.views++;if(push&&p.story&&!p.man){const st=S.act.find(x=>x.id==p.story);if(st){st.up=true;st.reacted=true}}if(p.story)storySeen(p,a);const is=p.t<NT?ISSUE_OF(p.t):-1;const agr=is>=0?a.v[is]*p.s:0;const ti=p.t>=NT?.3:a.it[p.t];
    const pe0=sigm(-1.4+2*p.h+1.5*ti+1.4*Math.abs(agr)+(p.img?.25:0)+(p.vid?.3:0)+(p.char?.6:0)+rxB+techEff('rx')-(has('divers')?.12:0));
-   a.vw=(a.vw||0)+1;const pe=pe0;if(Math.random()<pe){a.got=(a.got||0)+1;const angry=agr<-.12;p.rx++;eng++;a.eng++;a.last=p.txt;const am=advMult(a),vm=p.vid?(has('vidads')?2.9:1.6):1;const base=UU*ENGV*cpmM*adF*slow;const val=vm*base*am;inc+=val;incT+=vm*base*(am-1);incV+=(vm-1)*base;
-    if(angry){p.neg++;anger++;a.mood-=.015}else a.mood+=.008;if(p.story)storyReact(p,a,angry);
+   a.vw=(a.vw||0)+1;const pe=Math.min(.97,pe0*posM);if(Math.random()<pe){a.got=(a.got||0)+1;const angry=agr<-.12;p.rx++;eng++;a.eng++;a.last=p.txt;const am=advMult(a),vm=p.vid?(has('vidads')?2.9:1.6):1;const base=UU*ENGV*cpmM*adF*slow;const val=vm*base*am;inc+=val;incT+=vm*base*(am-1);incV+=(vm-1)*base;if(mg){p.mrx=(p.mrx||0)+1;p.minc=(p.minc||0)+val;CT.mrx++;CT.minc+=val}
+    if(angry){p.neg++;anger++;a.mood-=.015;if(mg){p.mneg=(p.mneg||0)+1;CT.mneg++}}else a.mood+=.008;if(p.story)storyReact(p,a,angry);
     // взгляды тянутся к тому, с чем человек согласен; несогласие слегка отталкивает
-    if(is>=0)a.v[is]=clamp(a.v[is]+.025*(p.pers&&has('celebs')?Math.max(pw,.4):pw)*(p.s-a.v[is])*Math.abs(p.s),-1,1);
-    S.stat.rx++;if(Math.random()<(angry?.15:.09)*(has('reposts')?1.5:.6)){p.sh.add(a.id);S.stat.sh++}
+    if(is>=0&&mg)p.mdv=(p.mdv||0)+Math.abs(.025*pw*(p.s-a.v[is])*Math.abs(p.s));if(is>=0)a.v[is]=clamp(a.v[is]+.025*(p.pers&&has('celebs')?Math.max(pw,.4):pw)*(p.s-a.v[is])*Math.abs(p.s),-1,1);
+    S.stat.rx++;if(Math.random()<(angry?.15:.09)*(has('reposts')?1.5:.6)){p.sh.add(a.id);S.stat.sh++;if(mg)p.msh=(p.msh||0)+1}
     // дружбы: рвутся только при сильном несогласии, заводятся при сильном согласии
     if(p.au&&p.au!=a.id){const b=byId(p.au);if(b){if(angry&&Math.abs(a.v[is]||0)>.45&&fr.includes(b.id)&&Math.random()<.1*pw*(has('unfollow')?1.6:1))unfriend(a,b);else if(agr>.2&&!fr.includes(b.id)&&Math.random()<.06*pw)befriend(a,b)}}}}}
  // рост: приходят по репостам (вирусность), уходят от скуки и злости
- let newSh=0;POOL.forEach(p=>{const n=p.sh.size-(p.shc||0);if(n>0){newSh+=n;p.shc=p.sh.size}});
- const joinP=(newSh*.06*(1+upEff('reach'))+.02)*(.55+.8*S.trust);let joins=Math.floor(joinP)+(Math.random()<joinP%1?1:0);S.stat.join+=joins;
+ let newSh=0;const shp=[];POOL.forEach(p=>{const n=p.sh.size-(p.shc||0);if(n>0){newSh+=n;p.shc=p.sh.size;if(p.msh)shp.push([p,n*Math.min(1,p.msh/p.sh.size)])}});
+ const joinP=(newSh*.06*(1+upEff('reach'))+.02)*(.55+.8*S.trust);let joins=Math.floor(joinP)+(Math.random()<joinP%1?1:0);S.stat.join+=joins;if(newSh)for(const[p,m]of shp){const j=joinP*m/newSh;p.mjoin=(p.mjoin||0)+j;CT.mjoin=(CT.mjoin||0)+j}
  S.tot.joined+=joins*UU;for(let i=0;i<joins;i++){if(S.A.length<agentCap()){const host=pk(S.A);addAgent(mkAgent({d:Math.random()<.6&&host?host.d:undefined}),host)}else S.extraA=(S.extraA||0)+1}
  S.mult=60*(1+(S.extraA||0)/Math.max(1,S.A.length))*(S.multFx||1);
- S.A.forEach(a=>{a.mood*=.995;if(a.vw){a.sat=(a.sat==null?.4:a.sat)*.95+.05*(a.got/a.vw)}a.got=0;a.vw=0;
+ S.A.forEach(a=>{a.mood*=.995;if(a.vw){a.sat=(a.sat==null?.4:a.sat)*.95+.05*((a.got||0)/a.vw)}a.got=0;a.vw=0;
   a.age2=(a.age2||0)+1;const why=churnCause(a);if(why){leave(a);S.stat[why]=(S.stat[why]||0)+1;S.stat.left=(S.stat.left||0)+1;S.tot.left+=UU}});
  // экономика
  const rs=scaleStep();const dat=S.sell&&has('selldata')?totalUsers()*.00003*cpmM/60:0;const pol=S.pol&&S.pol.camp&&has('polads')?(inc+rs.inc)*.3:0;
- const tot=inc+rs.inc+dat+pol;const el=elecRate()+rs.el;S.revM.ads=(S.revM.ads||0)+inc-incT-incV+rs.inc-rs.intl;S.revM.tgt=(S.revM.tgt||0)+incT;S.revM.vid=(S.revM.vid||0)+incV;S.revM.intl=(S.revM.intl||0)+rs.intl;S.revM.data=(S.revM.data||0)+dat;S.revM.pol=(S.revM.pol||0)+pol;S.tot.adv+=incT;
- if(S.sell&&has('selldata'))S.trustDebt=(S.trustDebt||0)+.00002;S.tot.left+=rs.lost;S.tot.joined+=rs.joined;
+ const inc0=inc;const tot=inc+rs.inc+dat+pol;const el=elecRate()+rs.el;S.revM.ads=(S.revM.ads||0)+inc-incT-incV+rs.inc-rs.intl;S.revM.tgt=(S.revM.tgt||0)+incT;S.revM.vid=(S.revM.vid||0)+incV;S.revM.intl=(S.revM.intl||0)+rs.intl;S.revM.data=(S.revM.data||0)+dat;S.revM.pol=(S.revM.pol||0)+pol;S.tot.adv+=incT;
+ if(S.sell&&has('selldata'))S.trustDebt=(S.trustDebt||0)+.00002;organicTick();S.tot.left+=rs.lost;S.tot.joined+=rs.joined;
  S.mon.rev+=tot;S.mon.el+=el;S.m+=tot;S.earned+=tot;S.watch+=eng*UU+rs.watch;inc=tot;
  if(S.t-S.mon.start>=MONTH)monthEnd();
- L={inc,eng,anger,users:totalUsers()};S.tot.views+=eng*UU*3;if(S.tot.v0==null&&S.t>5)S.tot.v0=S.polar;ema('inc',inc*60,.08);ema('users',L.users,.15);ema('anger',anger/(eng+1),.05);
+ actTick(UU);L={inc,eng,anger,users:totalUsers()};S.tot.views+=eng*UU*3;if(S.tot.v0==null&&S.t>5)S.tot.v0=S.polar;ema('inc',inc*60,.08);ema('users',L.users,.15);ema('anger',anger/(eng+1),.05);
  S.hist.push(inc*60);if(S.hist.length>150)S.hist.shift();
  if(S.t%10==0){clusters();S.polar=polarization()}
+ ['mv','mrx','minc','pv','prx','pinc','mneg','pneg','mjoin','drx','dinc'].forEach(k=>S.stat[k]=(S.stat[k]||0)+(CT[k]||0));S.stat.inc=(S.stat.inc||0)+tot;S.stat.vinc=(S.stat.vinc||0)+inc0;S.stat.uu=UU;
  if(S.t%10==0){S.stat.rjoin=Math.round(rs.joined);S.statH.push(Object.assign({t:S.t,users:S.A.length},S.stat));if(S.statH.length>30)S.statH.shift();S.stat={join:0,bored:0,angry:0,views:0,rx:0,sh:0,left:0}}
  layoutStep();newsTick()}
 function churnCause(a){const hab=1-Math.min(.6,techEff('habit')+Math.min(.2,(a.age2||0)/3000));const r=Math.random;
@@ -170,7 +178,7 @@ function applyFx(fx,st){fx.forEach(e=>{const[k,...r]=e.split(':');const rest=r.j
  if(k=='users'){const pc=+rest;if(pc>0)S.multFx=(S.multFx||1)*(1+pc/100);else for(let i=0;i<S.A.length*(-pc)/100;i++)leave(pk(S.A))}
  if(k=='polar')S.A.forEach(a=>{if(a.d==st.d)a.v=a.v.map(x=>clamp(x*1.08,-1,1))});
  if(k=='tax'){S.tax=clamp(S.tax+(+rest),5,60);mail('<b>Бухгалтерия:</b> ставка налога на прибыль теперь '+S.tax+'%')}
- if(k=='flag')S.flags[rest]=1;if(k=='unflag')delete S.flags[rest];if(k=='trust'){if(+rest<0)hitTrust(-rest/100);else S.trust=clamp(S.trust+(+rest)/100,0,1)}
+ if(k=='flag')S.flags[rest]=1;if(k=='unflag')delete S.flags[rest];if(k=='trust'){const lb='История: '+((st&&st.out)||'').replace(/^[^А-ЯЁA-Z«]+/,'').slice(0,60);if(+rest<0)hitTrust(-rest/100,lb);else{S.trust=clamp(S.trust+(+rest)/100,0,1);trustLog(lb,+rest/100)}}
  if(k=='rel'){const[id,dv]=rest.split(':');pers(id).rel=clamp(pers(id).rel+(+dv)/100,-1,1)}if(k=='fame'){const[id,dv]=rest.split(':');pers(id).fame*=1+(+dv)/100}
  if(k=='reg'){if(S.pol)S.pol.reg=Math.max(0,S.pol.reg+(+rest));S.cpuLaw=Math.max(0,S.cpuLaw+(+rest)*6)}if(k=='boost')S.boost=S.t+(+rest);if(k=='regu'){const[rk,dv]=rest.split(':');const r=rg(rk);if(r.unl)r.u*=1+(+dv)/100}
  if(k=='elec'){S.elec*=1+(+rest)/100;mail('<b>Бухгалтерия:</b> тариф на электричество изменился: ×'+S.elec.toFixed(2))}})}
@@ -182,5 +190,6 @@ function newsTick(){if(S.t>=(S.nextFlavor||8)){const n=pk(FLAVOR);S.news.unshift
   if(Math.random()<.45){const ev={id:'e'+S.t,t:n[0],k:TOPICS[n[0]].k,head:n[1].replace(/[.!].*$/,'').split(',')[0]};S.act.push({id:ev.id,k:'event',ev,evEnd:S.t+60,done:false,queue:[]});S.trend[n[0]]+=1.5}}
  S.act=S.act.filter(s=>s.k!='event'||s.evEnd>S.t);S.news.length=Math.min(80,S.news.length)}
 function newsItem(st){}
+function peOf(a,p){const is=p.t<NT?ISSUE_OF(p.t):-1;const agr=is>=0?a.v[is]*p.s:0;return sigm(-1.4+2*p.h+1.5*(p.t>=NT?.3:a.it[p.t])+1.4*Math.abs(agr)+(p.img?.25:0)+(p.vid?.3:0)+(p.char?.6:0))}
 function storyOk(d){return (d.era||0)<=era()&&(!d.req||d.req())}
 function init(){for(let i=0;i<24;i++)addAgent(mkAgent(),S.A.length?pk(S.A):null);for(let i=0;i<20;i++)POOL.push(agentPost(pk(S.A)));S.mon.start=0}
