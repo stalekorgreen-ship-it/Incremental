@@ -79,7 +79,7 @@ function step(){S.t++;const R=rep();const cap=srvCap();let online=0;for(const u 
  rulesTick();
  let vw=0,dwSum=0,sessSec=0,likes=0,coms=0,shares=0,saves=0,quits=0,ended=0;
  for(const u of S.U){
-  if(!u.on){if(S.t>=u.back){if(online*R<cap){u.on=true;online++;u.sLeft=(15+u.b.sess*3)*(.7+Math.random()*.6);u.busy=0}else S.blocked++}continue}
+  if(!u.on){if(S.t>=u.back){if(online*R<cap){u.on=true;online++;u.sLeft=(15+u.b.sess*3)*(.7+Math.random()*.6);u.busy=0}else{S.blocked++;u.back=S.t+30+Math.floor(Math.random()*30)}}continue}
   sessSec++;u.sLeft--;
   if(u.busy>0){u.busy--;continue}
   if(u.cur){u.cur=null}
@@ -91,12 +91,12 @@ function step(){S.t++;const R=rep();const cap=srvCap();let online=0;for(const u 
   const h={p:p.id,dw:+r.dw.toFixed(1),sk:r.skip,lk:0,q:0,t:S.t};
   if(Math.random()<r.pr.like){p.likes++;likes++;h.lk=1;u.likes.push(p.id);if(u.likes.length>20)u.likes.shift();(p.likers||(p.likers=[])).push(u.id)}
   if(Math.random()<r.pr.com){p.coms++;coms++}if(Math.random()<r.pr.save){p.saves++;saves++}if(Math.random()<r.pr.click)p.clicks++;
-  if(Math.random()<r.pr.share){p.shares++;shares++;if(Math.random()<.5*Math.max(0,1-S.regTotal/MARKET))invite()}
+  if(Math.random()<r.pr.share){p.shares++;shares++;if(Math.random()<.25*Math.max(0,1-S.regTotal/MARKET)*clamp(1.6-online*R/cap*1.2,0,1))invite()}
   logView(u,p,r.dw);classObs(u,p,r.dw);expObs(u,r.dw,h);
   if(Math.random()<r.pr.quit+(S.adLoad-.3)*.04){h.q=1;p.quits++;quits++;u.hh.push(h);endSess(u);online--;continue}
   u.hh.push(h);if(u.hh.length>40)u.hh.shift()}
  // базовый приток: сарафанное радио
- {const g=(.06+S.regTotal/900)*(.5+(S.avgRet||8)/16)*Math.max(0,1-S.regTotal/MARKET);for(let i=0;i<Math.floor(g);i++)invite();if(Math.random()<g%1)invite()}
+ {const full=clamp(1.6-online*R/cap*1.2,0,1);const g=(.04+S.regTotal/3500)*(.5+(S.avgRet||8)/16)*Math.max(0,1-S.regTotal/MARKET)*full;for(let i=0;i<Math.floor(g);i++)invite();if(Math.random()<g%1)invite()}
  // деньги: рекламный баннер сбоку — платят за секунды, проведённые на платформе
  const inc=sessSec*R*AD_RATE*(.4+S.adLoad*2)*(1+eff('adEff'));S.m+=inc;S.earned+=inc;S.views+=vw*R;
  const st=S.stat;st.inc=(st.inc||0)+inc;st.vw=(st.vw||0)+vw*R;st.sess=(st.sess||0)+sessSec;st.ended=(st.ended||0)+ended+quits;st.likes=(st.likes||0)+likes*R;st.coms=(st.coms||0)+coms*R;st.shares=(st.shares||0)+shares*R;st.saves=(st.saves||0)+saves*R;st.quits=(st.quits||0)+quits*R;st.blk=(st.blk||0)+S.blocked*R;
