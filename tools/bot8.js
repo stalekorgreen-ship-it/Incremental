@@ -12,9 +12,10 @@ function think(){// правила
  // группы: компетентный игрок группирует слова одной темы
  if(has('groups')&&S.t%20==0&&S.dict.groups.length<groupCap()){const by={};for(const w of Object.keys(S.dict.words)){const l=lemmaOf(w)||w;const t=(LEMMA_TOPIC[l]||[])[0];if(t==null)continue;(by[t]||(by[t]=[])).push(w)}
   const known=new Set(S.dict.groups.map(g=>g.t));const c=Object.entries(by).filter(([t,ws])=>ws.length>=3&&!known.has(+t)).sort((a,b)=>b[1].length-a[1].length)[0];if(c)S.dict.groups.push({id:S.dict.gid++,name:TOPICS8[c[0]][0],words:c[1].slice(0,5),t:+c[0]})}
- if(has('groups')&&S.rules.length<ruleSlots()+1&&S.dict.groups.length&&!S.rules.some(r=>r.conds[0].k=='groupAny'))S.rules.push({conds:[{k:'groupAny',v:S.dict.groups[0].id}],join:'and',act:1,on:S.rules.filter(r=>r.on).length<ruleSlots()});
+ if(has('groups')&&S.rules.length<ruleSlots()+1&&S.dict.groups.length&&!S.rules.some(r=>r.conds[0]&&r.conds[0].k=='groupAny'))S.rules.push({conds:[{k:'groupAny',v:S.dict.groups[0].id}],join:'and',act:1,on:S.rules.filter(r=>r.on).length<ruleSlots()});
+ if(has('prules')&&S.dict.groups.length&&!S.rules.some(r=>r.kind=='pers')){const g=S.dict.groups[0].id;S.rules.push({kind:'pers',who:'l',ga:g,gb:g,act:2,conds:[],on:S.rules.filter(r=>r.on).length<ruleSlots()})}
  if(has('lab')&&S.t%10==0)for(const g of S.dict.groups){const lastH=S.lab.hyp.find(h=>h.name==g.name&&h.res);const done=lastH&&(['found','partial','known'].includes(lastH.res.k)||S.t-lastH.t<300);const run=S.lab.runs.some(r=>r.words.join()==g.words.join());if(!done&&!run&&!labStart(g.id))break}
- if(S.lab.cats.length&&!S.rules.some(r=>r.conds[0].k=='cat')){const r=S.rules.find(r=>r.conds[0].k=='groupAny');if(r)r.conds=[{k:'cat',v:S.lab.cats[0].id}]}
+ if(S.lab.cats.length&&!S.rules.some(r=>r.conds[0]&&r.conds[0].k=='cat')){const r=S.rules.find(r=>r.conds[0]&&r.conds[0].k=='groupAny');if(r)r.conds=[{k:'cat',v:S.lab.cats[0].id}]}
  if(has('exp')&&!(S.exp&&S.exp.on)&&S.expHist.length<3&&S.rules.length)expStart(0,120,'all');
  if(has('users')&&!S.sel)S.sel=S.U[0].id;if(has('adload')&&S.adLoad<.4)S.adLoad=.4}
 function shop(){for(let k=0;k<4;k++){const on=S.online,cap=srvCap();const L=TECH8.filter(t=>t.id!='srv'&&!has(t.id)&&techOk8(t)).sort((a,b)=>a.p-b.p);

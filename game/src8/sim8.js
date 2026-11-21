@@ -69,7 +69,7 @@ function rankFor(u){let best=null,bs=-1e9;const seen=u.seen;
  for(const p of POOL){if(seen.includes(p.id))continue;let s=1.5*Math.exp(-(S.t-p.born)/150)+p.pri+p.rp+Math.random()*.6;
   if(has('pop'))s+=Math.min(1.5,p.views?p.dwT/p.views/(S.avgRet||8)-1:0);
   if(S.exp&&S.exp.on&&u.grp=='A')s+=expBonus(p);
-  s+=persScore(u,p);if(s>bs){bs=s;best=p}}return best}
+  s+=persScore(u,p)+persRules(u,p);if(s>bs){bs=s;best=p}}return best}
 // ---------- шаг ----------
 const srvCap=()=>100*Math.pow(2,S.srvLvl-1);
 function step(){S.t++;const R=rep();const cap=srvCap();let online=0;for(const u of S.U)if(u.on)online++;S.blocked=0;
@@ -79,7 +79,7 @@ function step(){S.t++;const R=rep();const cap=srvCap();let online=0;for(const u 
  rulesTick();
  let vw=0,dwSum=0,sessSec=0,likes=0,coms=0,shares=0,saves=0,quits=0,ended=0;
  for(const u of S.U){
-  if(!u.on){if(S.t>=u.back){if(online*R<cap){u.on=true;online++;u.sLeft=(15+u.b.sess*3)*(.7+Math.random()*.6);u.busy=0}else{S.blocked++;u.back=S.t+30+Math.floor(Math.random()*30)}}continue}
+  if(!u.on){if(S.t>=u.back){if(online*R<cap){u.on=true;u.s0=S.t;online++;u.sLeft=(15+u.b.sess*3)*(.7+Math.random()*.6);u.busy=0}else{S.blocked++;u.back=S.t+30+Math.floor(Math.random()*30)}}continue}
   sessSec++;u.sLeft--;
   if(u.busy>0){u.busy--;continue}
   if(u.cur){u.cur=null}
@@ -89,10 +89,11 @@ function step(){S.t++;const R=rep();const cap=srvCap();let online=0;for(const u 
   p.views++;p.dwT+=r.dw;vw++;dwSum+=r.dw;addWin(r.dw);
   const fd=u.fmtD[p.fmt]||(u.fmtD[p.fmt]=[0,0]);fd[0]++;fd[1]+=r.dw;
   const h={p:p.id,dw:+r.dw.toFixed(1),sk:r.skip,lk:0,q:0,t:S.t};
-  if(Math.random()<r.pr.like){p.likes++;likes++;h.lk=1;u.likes.push(p.id);if(u.likes.length>20)u.likes.shift();(p.likers||(p.likers=[])).push(u.id)}
+  const ud=u.ld&&u.ld[0]?u.ld[1]/u.ld[0]:0;
+  if(Math.random()<r.pr.like){p.likes++;likes++;h.lk=1;engage(u,p,'l');u.likes.push(p.id);if(u.likes.length>20)u.likes.shift();(p.likers||(p.likers=[])).push(u.id)}
   if(Math.random()<r.pr.com){p.coms++;coms++}if(Math.random()<r.pr.save){p.saves++;saves++}if(Math.random()<r.pr.click)p.clicks++;
   if(Math.random()<r.pr.share){p.shares++;shares++;if(Math.random()<.25*Math.max(0,1-S.regTotal/MARKET)*clamp(1.6-online*R/cap*1.2,0,1))invite()}
-  logView(u,p,r.dw);classObs(u,p,r.dw);expObs(u,r.dw,h);
+  logView(u,p,r.dw);if(fd[0]>3&&r.dw>fd[1]/fd[0]*1.5)engage(u,p,'d');classObs(u,p,r.dw);expObs(u,r.dw,h);
   if(Math.random()<r.pr.quit+(S.adLoad-.3)*.04){h.q=1;p.quits++;quits++;u.hh.push(h);endSess(u);online--;continue}
   u.hh.push(h);if(u.hh.length>40)u.hh.shift()}
  // базовый приток: сарафанное радио
@@ -108,7 +109,8 @@ const MARKET=3e6; // сколько людей в принципе может п
 // журнал просмотров платформы: по каждому человеку — сколько секунд он провёл на постах с каждым словом-якорем (две половины для проверки устойчивости)
 function logView(u,p,d0){const fd=u.fmtD[p.fmt];const d=Math.log(1+d0/Math.max(.5,fd&&fd[0]>1?fd[1]/fd[0]:d0));const ld=u.ld||(u.ld=[0,0]);ld[0]++;ld[1]+=d;const half=ld[0]&1;const lw=u.lw||(u.lw={});const seen=new Set();
  for(const x of p.words){const k=x.l;if(!k||seen.has(k))continue;seen.add(k);const o=lw[k]||(lw[k]=[0,0,0,0]);o[half*2]++;o[half*2+1]+=d}}
-function endSess(u){u.on=false;u.cur=null;u.busy=0;u.back=S.t+Math.round(40+Math.random()*120*(1.5-u.b.sess/180))}
+function engage(u,p,kind){const E=u.ew||(u.ew={});for(const x of p.words){for(const k of [x.w,x.l]){if(!k)continue;const o=E[k]||(E[k]=[0,0]);o[kind=='l'?0:1]++}}const ks=Object.keys(E);if(ks.length>80){ks.sort((a,b)=>(E[a][0]+E[a][1])-(E[b][0]+E[b][1]));for(const k of ks.slice(0,ks.length-60))delete E[k]}}
+function endSess(u){if(u.s0!=null){S.stat.sd=(S.stat.sd||0)+(S.t-u.s0);S.stat.sn=(S.stat.sn||0)+1;S.sessAvg=S.sessAvg==null?S.t-u.s0:S.sessAvg*.97+.03*(S.t-u.s0);u.s0=null}u.on=false;u.cur=null;u.busy=0;u.back=S.t+Math.round(40+Math.random()*120*(1.5-u.b.sess/180))}
 function invite(){if(S.U.length<SIMCAP){const u=addUser();u.back=S.t+2}else S.regTotal++}
 // среднее удержание: взвешенное по фактическим просмотрам в скользящем окне (окно растёт с аудиторией)
 function addWin(d){const W=Math.max(300,Math.round(S.regTotal*6));S.win.push(d);S.winSum+=d;while(S.win.length>W)S.winSum-=S.win.shift();S.avgRet=S.winSum/S.win.length}
