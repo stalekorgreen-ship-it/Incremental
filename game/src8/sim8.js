@@ -9,7 +9,7 @@ const NAV=100,PHOTOS=100;
 const SIMCAP=2500; // сколько человек симулируется поштучно; сверх этого каждый представляет нескольких
 const BASE8=()=>({v:8,t:0,m:20,earned:0,f:{},nb:0,U:[],nid:0,pid:0,
  win:[],winSum:0,views:0,regTotal:0,srvLvl:1,rules:[],dict:{words:{},groups:[],gid:1},lab:{hyp:[],cats:[],runs:[],nid:1},exp:null,expHist:[],
- auto:{runs:0,found:0,next:0},adLoad:.3,goals:{},wins:{},stat:{},statH:[],hist:[],mails:[],osI:null,sel:null,eff:{}});
+ auto:{runs:0,found:0,next:0},aud:[{id:0,name:'Все',m:null}],audN:1,inbox:[],sent:[],nextIn:0,adLoad:.3,goals:{},wins:{},stat:{},statH:[],hist:[],mails:[],osI:null,sel:null,eff:{}});
 let S=BASE8(),POOL=[];
 const has=id=>!!S.f[id];
 const UMAP=new Map();const byId=id=>UMAP.get(id);
@@ -56,6 +56,7 @@ function interaction(u,p){const b=u.b;let I=topicInterest(u,p.t);for(const t of 
   case 1:base=b.tImg*(.35+I);break;case 2:base=b.tImg*(.35+I)*Math.min(4,p.imgs*.45);break;
   case 3:base=Math.min(p.dur,b.tVid*(.15+I)*(.3+b.vidEnd/100));break;case 4:base=Math.min(p.dur,b.tVid*(.1+I)*(b.vidEnd/100)*1.2);break;
   case 5:base=3+b.tText*.2*(.3+I);break;case 6:base=4+3*I;break;case 7:base=b.tImg*.6*(.5+I)+(p.emo[17]?3:0);break;case 8:base=b.tImg*1.3*(.3+I);break;default:base=1+I*2}
+ const ft=u.fat&&u.fat[p.t]||0;base*=1/(1+.13*Math.max(0,ft-2));
  let fp=u.fmtD[p.fmt];if(fp&&fp[0]>3)base*=.85+.3*clamp(fp[1]/fp[0]/(S.avgRet||8),0,1.5);
  const skip=I<.18&&Math.random()<b.scroll/100*.85;let dw=skip?.5+Math.random()*1.2:Math.max(.6,base*eF*(.7+Math.random()*.6));
  const ang=(p.emo[2]||0)+(p.emo[15]||0);const prov=p.st.includes(9)||p.st.includes(14);
@@ -66,7 +67,7 @@ function interaction(u,p){const b=u.b;let I=topicInterest(u,p.t);for(const t of 
  return {dw,skip,I,pr}}
 // ---------- лента: что показать человеку следующим ----------
 function rankFor(u){let best=null,bs=-1e9;const seen=u.seen;
- for(const p of POOL){if(seen.includes(p.id))continue;let s=1.5*Math.exp(-(S.t-p.born)/150)+p.pri+p.rp+Math.random()*.6;
+ for(const p of POOL){if(seen.includes(p.id))continue;let s=1.5*Math.exp(-(S.t-p.born)/150)+p.rp+Math.random()*.6+(p.aud==null?0:inAud(u,p.aud)?3:-2);
   if(has('pop'))s+=Math.min(1.5,p.views?p.dwT/p.views/(S.avgRet||8)-1:0);
   if(S.exp&&S.exp.on&&u.grp=='A')s+=expBonus(p);
   s+=persScore(u,p)+persRules(u,p);if(s>bs){bs=s;best=p}}return best}
@@ -74,7 +75,9 @@ function rankFor(u){let best=null,bs=-1e9;const seen=u.seen;
 const srvCap=()=>100*Math.pow(2,S.srvLvl-1);
 function step(){S.t++;const R=rep();const cap=srvCap();let online=0;for(const u of S.U)if(u.on)online++;S.blocked=0;
  // новые посты
- const rate=.4+S.U.length/120;for(let i=0;i<rate;i++)if(Math.random()<rate/Math.ceil(rate)&&S.U.length)POOL.push(mkPost(pk(S.U)));
+ const rate=.4+S.U.length/120;for(let i=0;i<rate;i++)if(Math.random()<rate/Math.ceil(rate)&&S.U.length){const p=mkPost(pk(S.U));
+  if(S.t>=S.nextIn&&S.inbox.length<inboxCap()){p.inAt=S.t;S.inbox.push(p);S.nextIn=S.t+inboxGap()}else{p.aud=null;POOL.push(p)}}
+ S.inbox=S.inbox.filter(p=>{if(S.t-p.inAt<inboxLife())return true;p.aud=null;POOL.push(p);return false});
  POOL=POOL.filter(p=>S.t-p.born<300);if(POOL.length>260)POOL.splice(0,POOL.length-260);
  rulesTick();
  let vw=0,dwSum=0,sessSec=0,likes=0,coms=0,shares=0,saves=0,quits=0,ended=0;
@@ -86,7 +89,7 @@ function step(){S.t++;const R=rep();const cap=srvCap();let online=0;for(const u 
   if(u.sLeft<=0){endSess(u);online--;ended++;continue}
   const p=rankFor(u);if(!p){endSess(u);online--;continue}
   const r=interaction(u,p);u.busy=Math.ceil(r.dw);u.cur=p.id;u.seen.push(p.id);if(u.seen.length>80)u.seen.shift();
-  p.views++;p.dwT+=r.dw;vw++;dwSum+=r.dw;addWin(r.dw);
+  p.views++;p.dwT+=r.dw;vw++;tire(u,p);audView(u,p,r.dw);if(r.dw>(u.ld&&u.ld[0]?u.ld[1]/u.ld[0]:9)*1.3)(p.longers||(p.longers=[])).push(u.id);dwSum+=r.dw;addWin(r.dw);
   const fd=u.fmtD[p.fmt]||(u.fmtD[p.fmt]=[0,0]);fd[0]++;fd[1]+=r.dw;
   const h={p:p.id,dw:+r.dw.toFixed(1),sk:r.skip,lk:0,q:0,t:S.t};
   const ud=u.ld&&u.ld[0]?u.ld[1]/u.ld[0]:0;
@@ -110,6 +113,17 @@ const MARKET=3e6; // сколько людей в принципе может п
 function logView(u,p,d0){const fd=u.fmtD[p.fmt];const d=Math.log(1+d0/Math.max(.5,fd&&fd[0]>1?fd[1]/fd[0]:d0));const ld=u.ld||(u.ld=[0,0]);ld[0]++;ld[1]+=d;const half=ld[0]&1;const lw=u.lw||(u.lw={});const seen=new Set();
  for(const x of p.words){const k=x.l;if(!k||seen.has(k))continue;seen.add(k);const o=lw[k]||(lw[k]=[0,0,0,0]);o[half*2]++;o[half*2+1]+=d}}
 function engage(u,p,kind){const E=u.ew||(u.ew={});for(const x of p.words){for(const k of [x.w,x.l]){if(!k)continue;const o=E[k]||(E[k]=[0,0]);o[kind=='l'?0:1]++}}const ks=Object.keys(E);if(ks.length>80){ks.sort((a,b)=>(E[a][0]+E[a][1])-(E[b][0]+E[b][1]));for(const k of ks.slice(0,ks.length-60))delete E[k]}}
+// ---------- аудитории ----------
+const inboxCap=()=>4+eff('inboxCap');const inboxGap=()=>Math.max(1,Math.round(3.5-eff('inboxSpeed')*.6));const inboxLife=()=>8+eff('inboxLife');
+const audCap=()=>1+(has('split')?1:0)+eff('audCap');
+function audSet(A){if(A.auto!=null)return null;if(!A._s||A._n!=A.m.length){A._s=new Set(A.m);A._n=A.m.length}return A._s}
+function inAud(u,id){if(id==0)return true;const A=S.aud.find(a=>a.id==id);if(!A)return false;if(A.auto!=null)return topicInterest(u,A.auto)>.35;return audSet(A).has(u.id)}
+function send(p,aid){const i=S.inbox.indexOf(p);if(i<0)return;S.inbox.splice(i,1);p.aud=aid;p.sentAt=S.t;p.born=S.t;POOL.push(p);S.sent.unshift(p.id);S.sent.length=Math.min(30,S.sent.length);S.nSent=(S.nSent||0)+1}
+function mkAud(ids,name){if(S.aud.length>=audCap())return 'достигнут лимит аудиторий';ids=[...new Set(ids)].filter(id=>byId(id));if(ids.length<3)return 'нужно хотя бы 3 человека';const A={id:S.audN++,name:name||('Аудитория №'+(S.audN-1)),m:ids,st:[0,0],born:S.t};S.aud.push(A);return ''}
+function tire(u,p){const F=u.fat||(u.fat={});const dt=S.t-(u.fatT||S.t);u.fatT=S.t;if(dt>0)for(const k in F){F[k]*=Math.pow(.985,dt);if(F[k]<.05)delete F[k]}F[p.t]=(F[p.t]||0)+1}
+function audView(u,p,d){for(const A of S.aud){if(A.id==0||!inAud(u,A.id))continue;A.st[0]=A.st[0]*.995+1;A.st[1]=A.st[1]*.995+d;const o=(p.ad||(p.ad={}))[A.id]||(p.ad[A.id]=[0,0]);o[0]++;o[1]+=d}const A0=S.aud[0];A0.st=A0.st||[0,0];A0.st[0]=A0.st[0]*.995+1;A0.st[1]=A0.st[1]*.995+d}
+function audMembers(A){return A.id==0?S.U:A.auto!=null?S.U.filter(u=>topicInterest(u,A.auto)>.35):A.m.map(byId).filter(Boolean)}
+function audFatigue(A){const M=audMembers(A);if(!M.length)return 0;let s=0;for(const u of M){const F=u.fat;if(!F)continue;let mx=0;for(const k in F)if(F[k]>mx)mx=F[k];s+=mx}return clamp(s/M.length/8,0,1)}
 function endSess(u){if(u.s0!=null){S.stat.sd=(S.stat.sd||0)+(S.t-u.s0);S.stat.sn=(S.stat.sn||0)+1;S.sessAvg=S.sessAvg==null?S.t-u.s0:S.sessAvg*.97+.03*(S.t-u.s0);u.s0=null}u.on=false;u.cur=null;u.busy=0;u.back=S.t+Math.round(40+Math.random()*120*(1.5-u.b.sess/180))}
 function invite(){if(S.U.length<SIMCAP){const u=addUser();u.back=S.t+2}else S.regTotal++}
 // среднее удержание: взвешенное по фактическим просмотрам в скользящем окне (окно растёт с аудиторией)

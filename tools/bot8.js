@@ -3,23 +3,23 @@ const fs=require('fs'),path=require('path');const D=path.join(__dirname,'../game
 let code=['src/art.js','src8/data8.js','src8/sim8.js','src8/sys8.js'].map(f=>fs.readFileSync(D+f,'utf8')).join('\n');
 code+=`;var toast=()=>{},mail=()=>{},esc=s=>s;
 const MIN=${+process.argv[2]||180};init8();const log=[],gl={};let lastN=0;
-function act(){const top=POOL.filter(p=>p.views>=3).sort((a,b)=>b.dwT/b.views-a.dwT/a.views);if(S.t%5==0){top.slice(0,2).forEach(p=>{if(!p.pri)p.pri=2.5});top.slice(-2).forEach(p=>{if(!p.pri)p.pri=-4});S.didUp=1}}
+function bestAud(p){let best=0,bv=-1;for(const A of S.aud){const M=audMembers(A);if(!M.length)continue;let v=0;const k=Math.min(30,M.length);for(let i=0;i<k;i++)v+=topicInterest(M[i],p.t)/(1+.13*Math.max(0,((M[i].fat||{})[p.t]||0)-2));v/=k;if(A.id==0)v*=.8;if(v>bv){bv=v;best=A.id}}return best}
+function act(){if(S.t%2==0)for(const p of S.inbox.slice())if(S.t-p.inAt>=1&&!S.rules.some(r=>r.kind=='send'&&ruleOk(r,p)))send(p,bestAud(p));
+ if(has('split')&&S.aud.length<audCap()&&S.t%20==0){const p=POOL.filter(p=>(p.likers||[]).length>=4&&!p.usedA).sort((a,b)=>b.dwT/b.views-a.dwT/a.views)[0];if(p){p.usedA=1;if(!mkAud(p.likers)){const A=S.aud[S.aud.length-1];A.name=TOPICS8[p.t][0];A.renamed=1;A.t=p.t}}}}
 function think(){// правила
- if(has('rules')&&S.rules.length==0)S.rules.push({conds:[{k:'retAbove'}],join:'and',act:1,on:true});
- if(has('slot1')&&S.rules.length==1)S.rules.push({conds:[{k:'retBelow'}],join:'and',act:-1,on:true});
  // словарь: слова из самых удерживающих постов
  if(has('dict')&&S.t%15==0){const p=POOL.filter(p=>p.views>=4).sort((a,b)=>b.dwT/b.views-a.dwT/a.views)[0];if(p)for(const x of p.words)if(x.l)dictAdd(x.w)}
  // группы: компетентный игрок группирует слова одной темы
  if(has('groups')&&S.t%20==0&&S.dict.groups.length<groupCap()){const by={};for(const w of Object.keys(S.dict.words)){const l=lemmaOf(w)||w;const t=(LEMMA_TOPIC[l]||[])[0];if(t==null)continue;(by[t]||(by[t]=[])).push(w)}
   const known=new Set(S.dict.groups.map(g=>g.t));const c=Object.entries(by).filter(([t,ws])=>ws.length>=3&&!known.has(+t)).sort((a,b)=>b[1].length-a[1].length)[0];if(c)S.dict.groups.push({id:S.dict.gid++,name:TOPICS8[c[0]][0],words:c[1].slice(0,5),t:+c[0]})}
- if(has('groups')&&S.rules.length<ruleSlots()+1&&S.dict.groups.length&&!S.rules.some(r=>r.conds[0]&&r.conds[0].k=='groupAny'))S.rules.push({conds:[{k:'groupAny',v:S.dict.groups[0].id}],join:'and',act:1,on:S.rules.filter(r=>r.on).length<ruleSlots()});
+ if(has('groups')&&S.t%30==0)for(const g of S.dict.groups){if(S.rules.some(r=>r.kind=='send'&&r.conds[0].v==g.id))continue;const A=S.aud.find(a=>a.t==g.t);if(A&&S.rules.filter(r=>r.on).length<ruleSlots())S.rules.push({kind:'send',aud:A.id,conds:[{k:'groupAny',v:g.id}],join:'and',act:0,on:true})}
  if(has('prules')&&S.dict.groups.length&&!S.rules.some(r=>r.kind=='pers')){const g=S.dict.groups[0].id;S.rules.push({kind:'pers',who:'l',ga:g,gb:g,act:2,conds:[],on:S.rules.filter(r=>r.on).length<ruleSlots()})}
  if(has('lab')&&S.t%10==0)for(const g of S.dict.groups){const lastH=S.lab.hyp.find(h=>h.name==g.name&&h.res);const done=lastH&&(['found','partial','known'].includes(lastH.res.k)||S.t-lastH.t<300);const run=S.lab.runs.some(r=>r.words.join()==g.words.join());if(!done&&!run&&!labStart(g.id))break}
- if(S.lab.cats.length&&!S.rules.some(r=>r.conds[0]&&r.conds[0].k=='cat')){const r=S.rules.find(r=>r.conds[0]&&r.conds[0].k=='groupAny');if(r)r.conds=[{k:'cat',v:S.lab.cats[0].id}]}
+ for(const C of S.lab.cats)if(S.aud.length<audCap()&&!S.aud.some(a=>a.auto==C.t))S.aud.push({id:S.audN++,name:C.name,auto:C.t,t:C.t,st:[0,0],born:S.t});
  if(has('exp')&&!(S.exp&&S.exp.on)&&S.expHist.length<3&&S.rules.length)expStart(0,120,'all');
  if(has('users')&&!S.sel)S.sel=S.U[0].id;if(has('adload')&&S.adLoad<.4)S.adLoad=.4}
 function shop(){for(let k=0;k<4;k++){const on=S.online,cap=srvCap();const L=TECH8.filter(t=>t.id!='srv'&&!has(t.id)&&techOk8(t)).sort((a,b)=>a.p-b.p);
- if(on>cap*.85&&S.m>=srvPrice()&&srvPrice()<(L[0]?L[0].p*3:1e18)){buy8('srv');continue}if(L[0]&&S.m>=L[0].p){buy8(L[0].id);log.push(Math.round(S.t/60)+'m '+L[0].id)}else break}}
+ if(on>cap*.8&&S.m>=srvPrice()&&srvPrice()<(L[0]?L[0].p*3:1e18)){buy8('srv');continue}if(L[0]&&S.m>=L[0].p){buy8(L[0].id);log.push(Math.round(S.t/60)+'m '+L[0].id)}else break}}
 const t0=Date.now();
 for(let s=0;s<MIN*60;s++){act();step();think();if(s%3==0)shop();for(const[id,n]of GOALS)if(S.goals[id]&&!gl[id])gl[id]=Math.round(S.t/60);
  if(s%1200==0)console.log(Math.round(S.t/60)+'m ret='+(S.avgRet||0).toFixed(1)+' reg='+f(S.regTotal)+' on='+f(S.online)+'/'+f(srvCap())+' $'+f(S.m)+' inc/min='+f(S.statH.slice(-6).reduce((a,x)=>a+(x.inc||0),0))+' nb='+S.nb+' cats='+S.lab.cats.length+' simU='+S.U.length+' ms='+(Date.now()-t0))}
