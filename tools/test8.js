@@ -10,8 +10,8 @@ function research(words){S.dict.groups.push({id:S.dict.gid,name:'g',words});cons
 // 1. взвешенное удержание: одно продвижение сильнее влияет на маленькую аудиторию
 function boostEffect(n){fresh(n,8);for(let i=0;i<120;i++)step();const a0=S.avgRet;const p=POOL.slice().sort((a,b)=>(b.views?b.dwT/b.views:0)-(a.views?a.dwT/a.views:0))[0];p.pri=2.5;for(let i=0;i<40;i++)step();return S.avgRet-a0}
 // базовый дрейф без действий для сравнения
-function eff1(n,boost){_s=99;fresh(n,8);for(let i=0;i<150;i++)step();const a0=S.avgRet;const p=POOL.filter(p=>p.views>=3).sort((a,b)=>b.dwT/b.views-a.dwT/a.views)[0];if(boost)p.pri=2.5;_s=7;for(let i=0;i<60;i++)step();return S.avgRet-a0}
-{const s1=eff1(100,1)-eff1(100,0),s2=eff1(2500,1)-eff1(2500,0);ok(Math.abs(s1)>Math.abs(s2),'1. Одно ▲ лучшего поста за минуту: при 100 людях удержание '+(s1>=0?'+':'')+s1.toFixed(2)+' с, при 2500 — '+(s2>=0?'+':'')+s2.toFixed(2)+' с (против контроля)')}
+function eff1(n,boost){_s=99;fresh(n,8);for(let i=0;i<150;i++)step();const a0=S.avgRet;const p=POOL.filter(p=>p.views>=3).sort((a,b)=>b.dwT/b.views-a.dwT/a.views)[0];if(boost)p.aud=0;_s=7;for(let i=0;i<60;i++)step();return S.avgRet-a0}
+{const s1=eff1(100,1)-eff1(100,0),s2=eff1(2500,1)-eff1(2500,0);ok(Math.abs(s1)>Math.abs(s2),'1. Отправка лучшего поста «Всем» вместо органики за минуту: при 100 людях удержание '+(s1>=0?'+':'')+s1.toFixed(2)+' с, при 2500 — '+(s2>=0?'+':'')+s2.toFixed(2)+' с (против контроля)')}
 // 2. серверы удваивают лимит
 fresh(100,1);const c1=srvCap();S.srvLvl=4;ok(c1==100&&srvCap()==800,'2. Серверы: уровень 1 — '+c1+', уровень 4 — '+srvCap()+' одновременно');
 // 3–6. лаборатория на накопленных данных
