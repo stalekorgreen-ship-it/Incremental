@@ -110,7 +110,7 @@ function autoTry(){S.auto.next=S.t+Math.round(90*Math.pow(.75,eff('autoSpeed')))
  if(ws.length<2)return false;S.auto.runs++;labStart(null,{name:'Авто: '+ws.slice(0,2).join(' + '),words:ws});return true}
 // ---------- технологии ----------
 // [id, раздел, название, описание, цена, требования, эффект {ключ:+n}, условие-цель]
-const T8=[
+let T8=[
 ['split','Аудитории','Выделить аудиторию','у отправленного поста — кнопка «выделить лайкнувших»: новая аудитория',30,[],{}],
 ['aud2','Аудитории','Ещё 2 аудитории','+2 места для аудиторий',35,['split'],{audCap:2}],
 ['splitLong','Аудитории','Выделить досмотревших','аудитория из тех, кто смотрел пост дольше обычного',35,['split'],{}],
@@ -165,12 +165,12 @@ const T8=[
 ['clsacc2','Алгоритм','Глубокие профили','точная классификация',5695,['clsacc1','autoacc1'],{clsAcc:2}],
 ['autoacc3','Автоисследование','Редкие интересы','машина замечает редкие темы',6095,['autoacc2'],{autoAcc:1}],
 ['autonomy','Автоисследование','Автономная система','правила, исследования и персонализация работают сами',6620,['autoacc3','clsacc2','autoslot'],{autoSpeed:2,ruleSpeed:2}]];
-const TECH8=T8.map(([id,b,n,d,p,req,ef],i)=>({id,b,n,d,p,req,ef,i}));
-const srvPrice=()=>Math.round(25*Math.pow(1.9,S.srvLvl-1));
+let TECH8=T8.map(([id,b,n,d,p,req,ef],i)=>({id,b,n,d,p,req,ef,i}));
+const srvPrice=()=>Math.round(40*Math.pow(2.4,S.srvLvl-1));
 function techOk8(t){return t.req.every(has)}
 function buy8(id){if(id=='srv'){const c=srvPrice();if(S.m<c)return false;S.m-=c;S.srvLvl++;S.nb++;return true}const t=TECH8.find(x=>x.id==id);if(!t||has(id)||!techOk8(t)||S.m<t.p)return false;S.m-=t.p;S.f[id]=1;S.nb++;for(const k in t.ef)S.eff[k]=(S.eff[k]||0)+t.ef[k];if(id=='forms')dictRemap();if(id=='rules')S.f.dict=1;return true}
 // ---------- цели ----------
-const GOALS=[['send1','Отправь пост аудитории «Все»',()=>(S.nSent||0)>0],['split','Купи «Выделить аудиторию»',()=>has('split')],['aud1','Выдели первую аудиторию',()=>S.aud.length>1],['ren','Переименуй аудиторию',()=>S.aud.some(a=>a.renamed)],
+let GOALS=[['send1','Отправь пост аудитории «Все»',()=>(S.nSent||0)>0],['split','Купи «Выделить аудиторию»',()=>has('split')],['aud1','Выдели первую аудиторию',()=>S.aud.length>1],['ren','Переименуй аудиторию',()=>S.aud.some(a=>a.renamed)],
  ['aud3','Заведи 3 аудитории',()=>S.aud.length>=4],['ret','Добейся среднего удержания 12 с',()=>(S.avgRet||0)>=12],['rules','Открой правила и словарь',()=>has('rules')],['w5','Собери 5 слов',()=>Object.keys(S.dict.words).length>=5],
  ['rule1','Создай правило, которое отправляет посты аудитории',()=>S.rules.some(r=>r.kind=='send')],['g1','Создай группу слов',()=>S.dict.groups.length>0],['gr','Используй группу в правиле',()=>S.rules.some(r=>r.conds.some(c=>c.k=='groupAny'||c.k=='groupAll'))],
  ['lab','Открой лабораторию',()=>has('lab')],['cat1','Подтверди первую категорию',()=>S.lab.cats.length>0],['caud','Создай аудиторию из категории',()=>S.aud.some(a=>a.auto!=null)],['exp1','Проведи первый эксперимент',()=>S.expHist.length>0],

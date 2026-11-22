@@ -7,9 +7,9 @@ const f=n=>{n=+n||0;const a=Math.abs(n);return a>=1e12?(n/1e12).toFixed(2)+'T':a
 const normW=w=>w.toLowerCase().replace(/[^a-zа-яё0-9-]/gi,'');
 const NAV=100,PHOTOS=100;
 const SIMCAP=2500; // сколько человек симулируется поштучно; сверх этого каждый представляет нескольких
-const BASE8=()=>({v:8,t:0,m:20,earned:0,f:{},nb:0,U:[],nid:0,pid:0,
+const BASE8=()=>({v:8,t:0,m:0,earned:0,f:{},nb:0,U:[],nid:0,pid:0,
  win:[],winSum:0,views:0,regTotal:0,srvLvl:1,rules:[],dict:{words:{},groups:[],gid:1},lab:{hyp:[],cats:[],runs:[],nid:1},exp:null,expHist:[],
- auto:{runs:0,found:0,next:0},aud:[{id:0,name:'Все',m:null}],audN:1,inbox:[],sent:[],nextIn:0,adLoad:.3,goals:{},wins:{},stat:{},statH:[],hist:[],mails:[],osI:null,sel:null,eff:{}});
+ auto:{runs:0,found:0,next:0},aud:[{id:0,name:'Все',m:null}],audN:1,inbox:[],feeds:[],feedN:1,recent:[],sent:[],nextIn:0,adLoad:.3,goals:{},wins:{},stat:{},statH:[],hist:[],mails:[],osI:null,sel:null,eff:{}});
 let S=BASE8(),POOL=[];
 const has=id=>!!S.f[id];
 const UMAP=new Map();const byId=id=>UMAP.get(id);
