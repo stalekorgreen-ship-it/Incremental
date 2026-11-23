@@ -208,438 +208,254 @@ const lemmaOf=w=>FORM[w]||null;
 function topicInterest(u,t){let m=0;for(const[h,w]of TOPICS8[t][1]){const v=(u.hob[h]||0)/100*w;if(v>m)m=v}return m}
 // эмоция по структуре и теме: что эмоционально «звучит» в посте
 const STRUCT_EMO={9:[15,2],10:[17],14:[15,2,6],12:[8,3],17:[12,9],11:[13],3:[6],15:[14,2],16:[6,4]};
-// ===================== ЛЕНТА.EXE v8 — СИМУЛЯЦИЯ =====================
+// ===================== ЛЕНТА.EXE v10 — ЯДРО СИМУЛЯЦИИ (по диздоку, ред. 2) =====================
+const NAV=100,PHOTOS=100;
+// 1 игровой день = 10 с (10 тиков). Времени суток нет. Деньги = минуты внимания × ставка рекламы + аналитика − серверы.
 const pk=a=>a[Math.floor(Math.random()*a.length)];
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const sigm=x=>1/(1+Math.exp(-x));
 const gauss=()=>{let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)};
-const f=n=>{n=+n||0;const a=Math.abs(n);return a>=1e12?(n/1e12).toFixed(2)+'T':a>=1e9?(n/1e9).toFixed(2)+'B':a>=1e6?(n/1e6).toFixed(2)+'M':a>=1e4?(n/1e3).toFixed(1)+'K':a<10?n.toFixed(1):Math.round(n).toLocaleString('ru')};
+const f=n=>{n=+n||0;const a=Math.abs(n);return a>=1e9?(n/1e9).toFixed(2)+' млрд':a>=1e6?(n/1e6).toFixed(2)+' млн':a>=1e4?(n/1e3).toFixed(1)+' тыс.':a<10&&a%1?n.toFixed(2):Math.round(n).toLocaleString('ru')};
 const normW=w=>w.toLowerCase().replace(/[^a-zа-яё0-9-]/gi,'');
-const NAV=100,PHOTOS=100;
-const SIMCAP=2500; // сколько человек симулируется поштучно; сверх этого каждый представляет нескольких
-const BASE8=()=>({v:8,t:0,m:0,earned:0,f:{},nb:0,U:[],nid:0,pid:0,
- win:[],winSum:0,views:0,regTotal:0,srvLvl:1,rules:[],dict:{words:{},groups:[],gid:1},lab:{hyp:[],cats:[],runs:[],nid:1},exp:null,expHist:[],
- auto:{runs:0,found:0,next:0},aud:[{id:0,name:'Все',m:null}],audN:1,inbox:[],feeds:[],feedN:1,recent:[],sent:[],nextIn:0,adLoad:.3,goals:{},wins:{},stat:{},statH:[],hist:[],mails:[],osI:null,sel:null,eff:{}});
-let S=BASE8(),POOL=[];
+const TICK_DAY=10;
+// ---------- категории интересов (фиксированы разработчиком) ----------
+const CATS=['Автомобили','Политика','Наука','Игры','Спорт','Развлечения','Еда','Животные','Деньги','Здоровье','Технологии','Происшествия'];
+const NC=CATS.length;
+// темы из справочника v8 → категории
+const T2C={0:[0],1:[0],2:[4],3:[4],4:[4],5:[3],6:[3],7:[3],8:[10],9:[2],10:[9],11:[2],12:[2],13:[2],14:[1],15:[8],16:[8],17:[8],18:[2],19:[9],20:[5],21:[5],22:[5],23:[7],24:[2],25:[5],26:[6],27:[6],28:[9],29:[4],30:[5],31:[5],32:[5],33:[5],34:[5],35:[5],36:[5],37:[5],38:[5],39:[1],40:[11],41:[11],42:[5],43:[2],44:[5],45:[8],46:[8],47:[8],48:[5],49:[5]};
+// ---------- состояние ----------
+const BASE10=()=>({v:10,t:0,m:20,f:{},lv:{},U:[],nid:0,pid:0,P:[],arch:[],rules:[],rid:1,iv:[],news:[],ev:[],day:{},days:[],
+ queue:{rules:0,posts:0,feed:0,data:0},recalc:0,goals:{},wins:{},mails:[],data:{age:false,reg:false,int:false,beh:false,pref:false},dataQ:1,
+ elecP:1,waterP:1,neg:0,perf:1,totals:{att:0,ads:0,an:0,cost:0},sel:null,osI:null});
+let S=BASE10();
 const has=id=>!!S.f[id];
-const UMAP=new Map();const byId=id=>UMAP.get(id);
+const lvl=id=>S.lv[id]||0;
+const UMAP=new Map(),PMAP=new Map();const byId=id=>UMAP.get(id);const postById=id=>PMAP.get(id);
 // ---------- пользователи ----------
-const FN_M8=['Алексей','Дмитрий','Иван','Сергей','Артём','Максим','Никита','Павел','Олег','Роман','Игорь','Виктор','Денис','Егор','Тимур','Глеб','Михаил','Степан'];
-const FN_F8=['Анна','Мария','Ольга','Екатерина','Дарья','Полина','Ирина','Светлана','Юлия','Алина','Вера','Ксения','Наталья','Таня','Зина','Лена'];
-const LN8=['Иванов','Смирнов','Кузнецов','Попов','Соколов','Лебедев','Козлов','Новиков','Морозов','Петров','Волков','Соловьёв','Васильев','Зайцев','Павлов','Семёнов'];
-const DIST8=['Центр','Заречье','Промзона','Новостройки','Старый город','Университетский','Дачный','Порт'];
-// увлечения группами: у людей интересы не случайны — кто любит машины, часто любит и мотоциклы
-const HOB_CL=[[0,1,2,3],[4,5,6,7,8,9],[10,11,12,13],[14,15,16,17,18],[19,20,21,22,23,72],[24,25,23,49],[26,27,28,29],[30,31,32,33],[34,35],[36,37,38,39,75],[40,41,42],[43,44,45,46],[47,48,49],[50,51],[52,53,54,55,56],[57,58,59,60],[61,62,63],[64,65,66,67],[68,69,70,71],[73,74,75],[76,77,78],[79]];
-function mkUser(){const r=Math.random;const male=r()<.5;const age=Math.round(clamp(14+Math.abs(gauss())*18+r()*10,14,80));const hob={};const n=10+Math.floor(r()*11);
- const cls=[pk(HOB_CL),pk(HOB_CL)];for(const c of cls)for(const h of c)if(r()<.75)hob[h]=Math.round(40+r()*60);
- while(Object.keys(hob).length<n){const h=Math.floor(r()*NH);if(!hob[h])hob[h]=Math.round(1+Math.pow(r(),1.6)*70)}
- if(age<22){hob[11]=Math.max(hob[11]||0,50+Math.round(r()*40));}if(age>55){hob[43]=Math.max(hob[43]||0,40+Math.round(r()*50))}
- const p=()=>Math.round(r()*100);
- return {id:++S.nid,sex:male?'м':'ж',age,d:Math.floor(r()*DIST8.length),n:(male?pk(FN_M8)+' '+pk(LN8):pk(FN_F8)+' '+pk(LN8)+'а'),av:Math.floor(r()*NAV),hob,
-  b:{sess:Math.round(1+Math.pow(r(),2)*179),tText:Math.round(1+r()*59),tImg:Math.round(1+r()*29),tVid:Math.round(1+Math.pow(r(),1.5)*599),like:p(),com:Math.round(Math.pow(r(),2)*100),share:Math.round(Math.pow(r(),2)*100),save:p(),click:p(),argue:Math.round(Math.pow(r(),2)*100),scroll:p(),longread:p(),vidEnd:p(),emo:p(),quit:p()},
-  on:false,back:Math.floor(r()*30),sLeft:0,busy:0,cur:null,seen:[],hh:[],cls:{},likes:[],fmtD:{},grp:null}}
-function addUser(){const u=mkUser();S.U.push(u);UMAP.set(u.id,u);S.regTotal++;return u}
-const rep=()=>Math.max(1,S.regTotal/Math.max(1,S.U.length)); // реальных пользователей на одного симулируемого
+const FN_M=['Алексей','Дмитрий','Иван','Сергей','Артём','Максим','Никита','Павел','Олег','Роман','Игорь','Виктор','Денис','Егор','Тимур','Глеб','Михаил','Степан'];
+const FN_F=['Анна','Мария','Ольга','Екатерина','Дарья','Полина','Ирина','Светлана','Юлия','Алина','Вера','Ксения','Наталья','Таня','Зина','Лена'];
+const LN=['Иванов','Смирнов','Кузнецов','Попов','Соколов','Лебедев','Козлов','Новиков','Морозов','Петров','Волков','Соловьёв','Васильев','Зайцев','Павлов','Семёнов'];
+const REGIONS=['Столица','Заречье','Промзона','Новостройки','Старый город','Университетский','Дачный','Порт'];
+const SIMCAP=3000;
+// 9 базовых постоянных характеристик + интересы
+function mkUser(){const r=Math.random,male=r()<.5;const it=CATS.map(()=>Math.round(Math.pow(r(),2.2)*100));const fav=Math.floor(r()*NC);it[fav]=Math.max(it[fav],60+Math.round(r()*40));
+ return {id:++S.nid,n:(male?pk(FN_M)+' '+pk(LN):pk(FN_F)+' '+pk(LN)+'а'),male,age:Math.round(clamp(14+Math.abs(gauss())*18+r()*10,14,80)),reg:Math.floor(r()*REGIONS.length),av:Math.floor(r()*100),it,
+  like:r(),com:Math.pow(r(),2),share:Math.pow(r(),2),readCom:r(),scroll:r(),sess:5+Math.round(Math.pow(r(),1.5)*175),visits:.3+r()*4.7,bore:3+r()*7,argue:Math.pow(r(),2),
+  v:0,hist:[],dayT:0,dayV:0,dayD:0,timeAvg:null,ret7:[],gone:false,join:S.t}}
+function addUser(){const u=mkUser();u.v=u.visits;S.U.push(u);UMAP.set(u.id,u);S.reg=(S.reg||0)+1;return u}
+const active=()=>S.U.filter(u=>!u.gone).length;
+const rep=()=>Math.max(1,(S.reg-S.left||0)/Math.max(1,active()));
 // ---------- публикации ----------
-const LENC=[[0,50],[51,150],[151,300],[301,600],[601,1200],[1201,2500],[2501,5000],[5001,9000]];
-const FILL=['Расскажу подробнее.','Вот что я об этом думаю.','Если честно, я долго сомневался.','Пишите в комментариях своё мнение.','Это только начало истории.','Обновлю пост, когда узнаю больше.','Сохраните, чтобы не потерять.','Спасибо всем, кто дочитал.'];
-const PREF={0:'Вопрос: ',3:'Инструкция: ',5:'Обзор. ',6:'Личный опыт: ',7:'Новость: ',9:'Скажу честно, это бред: ',10:'Шутка дня: ',11:'Делайте так же! ',12:'Внимание! ',13:'Реклама. ',14:'Непопулярное мнение: ',16:'Пять фактов: ',17:'История из жизни: '};
-function topicsFor(u){const w=TOPICS8.map((T,t)=>Math.pow(topicInterest(u,t),2)+.02);let x=Math.random()*w.reduce((a,b)=>a+b),t=0;for(;t<NT8;t++){x-=w[t];if(x<=0)break}return Math.min(t,NT8-1)}
-function mkPost(au,o={}){const t=o.t!=null?o.t:au?topicsFor(au):Math.floor(Math.random()*NT8);const T=TOPICS8[t];
- const t2=[];const k2=Math.random()<.5?0:Math.floor(Math.random()*3)+1;for(let i=0;i<k2;i++){const x=Math.floor(Math.random()*NT8);if(x!=t&&!t2.includes(x))t2.push(x)}
- const fmtW=[30,22,6,12,5,6,4,8,3,4];let x=Math.random()*100,fmt=0;for(;fmt<10;fmt++){x-=fmtW[fmt];if(x<=0)break}fmt=Math.min(fmt,9);if(o.fmt!=null)fmt=o.fmt;
- const st=[];const ns=1+Math.floor(Math.random()*2.5);for(let i=0;i<ns;i++){const s=Math.floor(Math.random()*STRUCTS.length);if(!st.includes(s))st.push(s)}if(fmt==6&&!st.includes(0))st.push(0);if(fmt==9&&!st.includes(13))st.push(13);if(fmt==7&&!st.includes(10))st.push(10);
- let txt=(PREF[st[0]]||'')+pk(T[3]);for(const s of t2.slice(0,1))txt+='. '+pk(TOPICS8[s][3]);if(st.includes(0)||st.includes(15))txt+='?';
- // длина: у текстовых постов — класс длины; длинный текст достраивается абзацами
- let lc=fmt==0?Math.min(7,Math.floor(Math.pow(Math.random(),1.6)*8)):fmt==7||fmt==1?0:Math.floor(Math.random()*2);const[lo,hi]=LENC[lc];let len=Math.max(txt.length,Math.round(lo+Math.random()*(hi-lo)));
- while(txt.length<Math.min(len,260))txt+=' '+pk(FILL);if(len<txt.length)len=txt.length;
- const emo={};for(const s of st)for(const e of(STRUCT_EMO[s]||[]))emo[e]=Math.round(40+Math.random()*60);const ne=1+Math.floor(Math.random()*2);for(let i=0;i<ne;i++){const e=Math.floor(Math.random()*EMOS.length);emo[e]=Math.max(emo[e]||0,Math.round(20+Math.random()*80))}
- const words=[];txt.split(/\s+/).forEach((w,i)=>{const n=normW(w);if(n.length>=2)words.push({w:n,l:lemmaOf(n),i})});
- const dur=fmt==3?Math.round(5+Math.random()*55):fmt==4?Math.round(60+Math.random()*900):0;const imgs=fmt==2?2+Math.floor(Math.random()*9):fmt==1||fmt==7||fmt==8?1:0;
- return {id:++S.pid,au:au?au.id:0,auN:au?au.n:'«Лента»',av:au?au.av:0,t,t2,fmt,len,dur,imgs,st,emo,txt,words,born:S.t,pri:0,rp:0,views:0,dwT:0,likes:0,coms:0,shares:0,saves:0,clicks:0,quits:0,skips:0,ph:imgs?Math.floor(Math.random()*PHOTOS):null,base:.4+Math.random()*.6}}
-const postIn=(p,t)=>p.t==t||p.t2.includes(t);
-// ---------- взаимодействие человека и публикации ----------
-function interaction(u,p){const b=u.b;let I=topicInterest(u,p.t);for(const t of p.t2)I+=topicInterest(u,t)*.4;I=Math.min(1.3,I);
- const emoI=Object.values(p.emo).reduce((a,x)=>a+x,0)/100;const eF=1+b.emo/100*Math.min(1.5,emoI)*.35;
- let base;const lr=b.longread/100;
- switch(p.fmt){case 0:{const read=p.len/(14+lr*10);base=Math.min(read,b.tText*(.4+I)*(p.len>600?lr*1.6+.2:1));break}
-  case 1:base=b.tImg*(.35+I);break;case 2:base=b.tImg*(.35+I)*Math.min(4,p.imgs*.45);break;
-  case 3:base=Math.min(p.dur,b.tVid*(.15+I)*(.3+b.vidEnd/100));break;case 4:base=Math.min(p.dur,b.tVid*(.1+I)*(b.vidEnd/100)*1.2);break;
-  case 5:base=3+b.tText*.2*(.3+I);break;case 6:base=4+3*I;break;case 7:base=b.tImg*.6*(.5+I)+(p.emo[17]?3:0);break;case 8:base=b.tImg*1.3*(.3+I);break;default:base=1+I*2}
- const ft=u.fat&&u.fat[p.t]||0;base*=1/(1+.13*Math.max(0,ft-2));
- let fp=u.fmtD[p.fmt];if(fp&&fp[0]>3)base*=.85+.3*clamp(fp[1]/fp[0]/(S.avgRet||8),0,1.5);
- const skip=I<.18&&Math.random()<b.scroll/100*.85;let dw=skip?.5+Math.random()*1.2:Math.max(.6,base*eF*(.7+Math.random()*.6));
- const ang=(p.emo[2]||0)+(p.emo[15]||0);const prov=p.st.includes(9)||p.st.includes(14);
- const pr={like:skip?0:b.like/100*clamp(I*.9+.05+(p.emo[0]||0)/400+(p.emo[7]||0)/400,0,1)*.6,
-  com:skip?0:b.com/100*clamp(I*.3+(prov?.35:0)+b.argue/100*ang/200,0,1)*.5,share:skip?0:b.share/100*clamp(I*.5+(p.emo[17]?.25:0),0,1)*.3,
-  save:skip?0:b.save/100*(p.st.includes(3)||p.st.includes(16)?.5:.08)*I,click:p.fmt==5?b.click/100*(.2+I*.6):0,
-  quit:clamp(b.quit/100*.06*(1.3-I)+(p.fmt==9?.05:0)+(ang>80&&b.argue<40?.06:0)+(skip?.02:0),0,.6)};
- return {dw,skip,I,pr}}
-// ---------- лента: что показать человеку следующим ----------
-function rankFor(u){let best=null,bs=-1e9;const seen=u.seen;
- for(const p of POOL){if(seen.includes(p.id))continue;let s=1.5*Math.exp(-(S.t-p.born)/150)+p.rp+Math.random()*.6+(p.aud==null?0:inAud(u,p.aud)?3:-2);
-  if(has('pop'))s+=Math.min(1.5,p.views?p.dwT/p.views/(S.avgRet||8)-1:0);
-  if(S.exp&&S.exp.on&&u.grp=='A')s+=expBonus(p);
-  s+=persScore(u,p)+persRules(u,p);if(s>bs){bs=s;best=p}}return best}
-// ---------- шаг ----------
-const srvCap=()=>100*Math.pow(2,S.srvLvl-1);
-function step(){S.t++;const R=rep();const cap=srvCap();let online=0;for(const u of S.U)if(u.on)online++;S.blocked=0;
- // новые посты
- const rate=.4+S.U.length/120;for(let i=0;i<rate;i++)if(Math.random()<rate/Math.ceil(rate)&&S.U.length){const p=mkPost(pk(S.U));
-  if(S.t>=S.nextIn&&S.inbox.length<inboxCap()){p.inAt=S.t;S.inbox.push(p);S.nextIn=S.t+inboxGap()}else{p.aud=null;POOL.push(p)}}
- S.inbox=S.inbox.filter(p=>{if(S.t-p.inAt<inboxLife())return true;p.aud=null;POOL.push(p);return false});
- POOL=POOL.filter(p=>S.t-p.born<300);if(POOL.length>260)POOL.splice(0,POOL.length-260);
- rulesTick();
- let vw=0,dwSum=0,sessSec=0,likes=0,coms=0,shares=0,saves=0,quits=0,ended=0;
- for(const u of S.U){
-  if(!u.on){if(S.t>=u.back){if(online*R<cap){u.on=true;u.s0=S.t;online++;u.sLeft=(15+u.b.sess*3)*(.7+Math.random()*.6);u.busy=0}else{S.blocked++;u.back=S.t+30+Math.floor(Math.random()*30)}}continue}
-  sessSec++;u.sLeft--;
-  if(u.busy>0){u.busy--;continue}
-  if(u.cur){u.cur=null}
-  if(u.sLeft<=0){endSess(u);online--;ended++;continue}
-  const p=rankFor(u);if(!p){endSess(u);online--;continue}
-  const r=interaction(u,p);u.busy=Math.ceil(r.dw);u.cur=p.id;u.seen.push(p.id);if(u.seen.length>80)u.seen.shift();
-  p.views++;p.dwT+=r.dw;vw++;tire(u,p);audView(u,p,r.dw);if(r.dw>(u.ld&&u.ld[0]?u.ld[1]/u.ld[0]:9)*1.3)(p.longers||(p.longers=[])).push(u.id);dwSum+=r.dw;addWin(r.dw);
-  const fd=u.fmtD[p.fmt]||(u.fmtD[p.fmt]=[0,0]);fd[0]++;fd[1]+=r.dw;
-  const h={p:p.id,dw:+r.dw.toFixed(1),sk:r.skip,lk:0,q:0,t:S.t};
-  const ud=u.ld&&u.ld[0]?u.ld[1]/u.ld[0]:0;
-  if(Math.random()<r.pr.like){p.likes++;likes++;h.lk=1;engage(u,p,'l');u.likes.push(p.id);if(u.likes.length>20)u.likes.shift();(p.likers||(p.likers=[])).push(u.id)}
-  if(Math.random()<r.pr.com){p.coms++;coms++}if(Math.random()<r.pr.save){p.saves++;saves++}if(Math.random()<r.pr.click)p.clicks++;
-  if(Math.random()<r.pr.share){p.shares++;shares++;if(Math.random()<.25*Math.max(0,1-S.regTotal/MARKET)*clamp(1.6-online*R/cap*1.2,0,1))invite()}
-  logView(u,p,r.dw);if(fd[0]>3&&r.dw>fd[1]/fd[0]*1.5)engage(u,p,'d');classObs(u,p,r.dw);expObs(u,r.dw,h);
-  if(Math.random()<r.pr.quit+(S.adLoad-.3)*.04){h.q=1;p.quits++;quits++;u.hh.push(h);endSess(u);online--;continue}
-  u.hh.push(h);if(u.hh.length>40)u.hh.shift()}
- // базовый приток: сарафанное радио
- {const full=clamp(1.6-online*R/cap*1.2,0,1);const g=(.04+S.regTotal/3500)*(.5+(S.avgRet||8)/16)*Math.max(0,1-S.regTotal/MARKET)*full;for(let i=0;i<Math.floor(g);i++)invite();if(Math.random()<g%1)invite()}
- // деньги: рекламный баннер сбоку — платят за секунды, проведённые на платформе
- const inc=sessSec*R*AD_RATE*(.4+S.adLoad*2)*(1+eff('adEff'));S.m+=inc;S.earned+=inc;S.views+=vw*R;
- const st=S.stat;st.inc=(st.inc||0)+inc;st.vw=(st.vw||0)+vw*R;st.sess=(st.sess||0)+sessSec;st.ended=(st.ended||0)+ended+quits;st.likes=(st.likes||0)+likes*R;st.coms=(st.coms||0)+coms*R;st.shares=(st.shares||0)+shares*R;st.saves=(st.saves||0)+saves*R;st.quits=(st.quits||0)+quits*R;st.blk=(st.blk||0)+S.blocked*R;
- if(S.t%10==0){S.statH.push(Object.assign({t:S.t,online:online*R,ret:S.avgRet},st));if(S.statH.length>30)S.statH.shift();S.stat={}}
- S.online=online*R;S.hist.push(inc*60);if(S.hist.length>150)S.hist.shift();
- labTick();classTick();autoTick();expTick();goalsTick()}
-const AD_RATE=.0065;
-const MARKET=3e6; // сколько людей в принципе может прийти в «Ленту»
-// журнал просмотров платформы: по каждому человеку — сколько секунд он провёл на постах с каждым словом-якорем (две половины для проверки устойчивости)
-function logView(u,p,d0){const fd=u.fmtD[p.fmt];const d=Math.log(1+d0/Math.max(.5,fd&&fd[0]>1?fd[1]/fd[0]:d0));const ld=u.ld||(u.ld=[0,0]);ld[0]++;ld[1]+=d;const half=ld[0]&1;const lw=u.lw||(u.lw={});const seen=new Set();
- for(const x of p.words){const k=x.l;if(!k||seen.has(k))continue;seen.add(k);const o=lw[k]||(lw[k]=[0,0,0,0]);o[half*2]++;o[half*2+1]+=d}}
-function engage(u,p,kind){const E=u.ew||(u.ew={});for(const x of p.words){for(const k of [x.w,x.l]){if(!k)continue;const o=E[k]||(E[k]=[0,0]);o[kind=='l'?0:1]++}}const ks=Object.keys(E);if(ks.length>80){ks.sort((a,b)=>(E[a][0]+E[a][1])-(E[b][0]+E[b][1]));for(const k of ks.slice(0,ks.length-60))delete E[k]}}
-// ---------- аудитории ----------
-const inboxCap=()=>4+eff('inboxCap');const inboxGap=()=>Math.max(1,Math.round(3.5-eff('inboxSpeed')*.6));const inboxLife=()=>8+eff('inboxLife');
-const audCap=()=>1+(has('split')?1:0)+eff('audCap');
-function audSet(A){if(A.auto!=null)return null;if(!A._s||A._n!=A.m.length){A._s=new Set(A.m);A._n=A.m.length}return A._s}
-function inAud(u,id){if(id==0)return true;const A=S.aud.find(a=>a.id==id);if(!A)return false;if(A.auto!=null)return topicInterest(u,A.auto)>.35;return audSet(A).has(u.id)}
-function send(p,aid){const i=S.inbox.indexOf(p);if(i<0)return;S.inbox.splice(i,1);p.aud=aid;p.sentAt=S.t;p.born=S.t;POOL.push(p);S.sent.unshift(p.id);S.sent.length=Math.min(30,S.sent.length);S.nSent=(S.nSent||0)+1}
-function mkAud(ids,name){if(S.aud.length>=audCap())return 'достигнут лимит аудиторий';ids=[...new Set(ids)].filter(id=>byId(id));if(ids.length<3)return 'нужно хотя бы 3 человека';const A={id:S.audN++,name:name||('Аудитория №'+(S.audN-1)),m:ids,st:[0,0],born:S.t};S.aud.push(A);return ''}
-function tire(u,p){const F=u.fat||(u.fat={});const dt=S.t-(u.fatT||S.t);u.fatT=S.t;if(dt>0)for(const k in F){F[k]*=Math.pow(.985,dt);if(F[k]<.05)delete F[k]}F[p.t]=(F[p.t]||0)+1}
-function audView(u,p,d){for(const A of S.aud){if(A.id==0||!inAud(u,A.id))continue;A.st[0]=A.st[0]*.995+1;A.st[1]=A.st[1]*.995+d;const o=(p.ad||(p.ad={}))[A.id]||(p.ad[A.id]=[0,0]);o[0]++;o[1]+=d}const A0=S.aud[0];A0.st=A0.st||[0,0];A0.st[0]=A0.st[0]*.995+1;A0.st[1]=A0.st[1]*.995+d}
-function audMembers(A){return A.id==0?S.U:A.auto!=null?S.U.filter(u=>topicInterest(u,A.auto)>.35):A.m.map(byId).filter(Boolean)}
-function audFatigue(A){const M=audMembers(A);if(!M.length)return 0;let s=0;for(const u of M){const F=u.fat;if(!F)continue;let mx=0;for(const k in F)if(F[k]>mx)mx=F[k];s+=mx}return clamp(s/M.length/8,0,1)}
-function endSess(u){if(u.s0!=null){S.stat.sd=(S.stat.sd||0)+(S.t-u.s0);S.stat.sn=(S.stat.sn||0)+1;S.sessAvg=S.sessAvg==null?S.t-u.s0:S.sessAvg*.97+.03*(S.t-u.s0);u.s0=null}u.on=false;u.cur=null;u.busy=0;u.back=S.t+Math.round(40+Math.random()*120*(1.5-u.b.sess/180))}
-function invite(){if(S.U.length<SIMCAP){const u=addUser();u.back=S.t+2}else S.regTotal++}
-// среднее удержание: взвешенное по фактическим просмотрам в скользящем окне (окно растёт с аудиторией)
-function addWin(d){const W=Math.max(300,Math.round(S.regTotal*6));S.win.push(d);S.winSum+=d;while(S.win.length>W)S.winSum-=S.win.shift();S.avgRet=S.winSum/S.win.length}
-const eff=k=>S.eff[k]||0;
-function init8(){for(let i=0;i<100;i++)addUser();for(let i=0;i<40;i++){const p=mkPost(pk(S.U));p.born=-Math.floor(Math.random()*200);POOL.push(p)}}
-// ===================== ЛЕНТА.EXE v8 — ПРАВИЛА, СЛОВАРЬ, ЛАБОРАТОРИЯ, ЭКСПЕРИМЕНТЫ, АЛГОРИТМ =====================
-// ---------- правила ----------
-// условие: {k, v}. k: retGt, retLt, retAbove, retBelow, viewsGt, viewsLt, word, groupAny, groupAll, cat, likesGt, comsGt, quitsGt
-// действие: +1 повысить приоритет, -1 понизить, +3 продвигать, -4 закапывать
-const RACT={1:'повысить приоритет',3:'продвигать','-1':'понизить приоритет','-4':'закапывать',2:'показывать чаще',4:'продвигать','-2':'показывать реже'};
-const ruleSlots=()=>1+eff('ruleSlots');
-const ruleConds=()=>1+eff('ruleConds');
-const ruleEvery=()=>Math.max(1,10-eff('ruleSpeed'));
-function postRet(p){return p.views?p.dwT/p.views:0}
-function postHas(p,key){const lem=has('forms');return p.words.some(x=>x.w==key||(lem&&x.l&&x.l==(lemmaOf(key)||key)))}
-function condOk(c,p){const avg=S.avgRet||0;switch(c.k){
- case 'retGt':return p.views>=3&&postRet(p)>c.v;case 'retLt':return p.views>=3&&postRet(p)<c.v;case 'retAbove':return p.views>=3&&postRet(p)>avg;case 'retBelow':return p.views>=3&&postRet(p)<avg;
- case 'fmt':return p.fmt==c.v;case 'viewsGt':return p.views>c.v;case 'viewsLt':return p.views<c.v;case 'word':return postHas(p,c.v);
- case 'groupAny':{const g=S.dict.groups.find(x=>x.id==c.v);return !!g&&g.words.some(w=>postHas(p,w))}
- case 'groupAll':{const g=S.dict.groups.find(x=>x.id==c.v);return !!g&&g.words.length>0&&g.words.every(w=>postHas(p,w))}
- case 'cat':{const C=S.lab.cats.find(x=>x.id==c.v);return !!C&&postIn(p,C.t)}
- case 'likesGt':return p.views>=5&&p.likes/p.views*100>c.v;case 'comsGt':return p.views>=5&&p.coms/p.views*100>c.v;case 'quitsGt':return p.views>=5&&p.quits/p.views*100>c.v}return false}
-function ruleOk(r,p){if(r.kind=='pers')return false;if(r.kind=='send'&&!r.conds.length)return false;const cs=r.conds.slice(0,ruleConds());if(!cs.length)return false;return r.join=='or'?cs.some(c=>condOk(c,p)):cs.every(c=>condOk(c,p))}
-function sendTick(){if(!has('rules'))return;const act=S.rules.filter(r=>r.on&&r.kind=='send').slice(0,ruleSlots());if(!act.length)return;
- for(const p of S.inbox.slice()){if(S.t-p.inAt<1)continue;for(const r of act)if(ruleOk(r,p)){send(p,r.aud);p.byRule=1;break}}}
-function rulesTick(){sendTick();if(!has('rules')||S.t%ruleEvery())return;const act=S.rules.filter(r=>r.on&&!r.exp&&!r.kind).slice(0,ruleSlots());
- for(const p of POOL){let s=0;for(const r of act)if(ruleOk(r,p))s+=r.act;p.rp=clamp(s,-5,4)}}
-// ---------- персональные правила: что человек любит → что ему показывать ----------
-// ЕСЛИ человек лайкал (или смотрел дольше обычного) посты со словами группы A, ТО для него поднимать посты со словами группы B
-function grpWords(id){if(typeof id=='string'&&id[0]=='c'){const c=S.lab.cats.find(x=>x.id==+id.slice(1));return c?c.words:[]}const g=S.dict.groups.find(x=>x.id==+id);return g?g.words:[]}
-function userLikes(u,ws,who){const E=u.ew;if(!E)return false;const lem=has('forms');for(const w of ws){const o=E[w]||(lem&&E[lemmaOf(w)||w]);if(o&&(who=='l'?o[0]:o[0]+o[1])>=1)return true}return false}
-function persRules(u,p){if(!has('prules'))return 0;let s=0;const act=S.rules.filter(r=>r.on&&r.kind=='pers');let n=0;
- for(const r of act){if(n++>=ruleSlots())break;const B=grpWords(r.gb);if(!B.length||!B.some(w=>postHas(p,w)))continue;if(userLikes(u,grpWords(r.ga),r.who))s+=r.act}return s}
-function groupStats(ws){let n=0,v=0,d=0,l=0;for(const p of POOL){if(!ws.some(w=>postHas(p,w)))continue;n++;v+=p.views;d+=p.dwT;l+=p.likes}let fans=0;for(const u of S.U)if(userLikes(u,ws,'l'))fans++;return {n,ret:v?d/v:0,likes:l,views:v,fans:fans*rep()}}
-// ---------- словарь ----------
-const dictCap=()=>20+eff('dictCap');
-const groupCap=()=>has('groups')?2+eff('groupCap'):0;
-const dictKey=w=>has('forms')?(lemmaOf(w)||w):w;
-function dictAdd(w){const k=dictKey(normW(w));if(!k||k.length<2)return 'пустое слово';const D=S.dict.words;if(D[k]){D[k].n++;return 'уже в словаре'}if(Object.keys(D).length>=dictCap())return 'словарь заполнен';D[k]={n:1,t:S.t};return ''}
-function dictRemap(){if(!has('forms'))return;const D=S.dict.words,N={};for(const k in D){const l=lemmaOf(k)||k;N[l]=N[l]||D[k]}S.dict.words=N;S.dict.groups.forEach(g=>g.words=[...new Set(g.words.map(w=>lemmaOf(w)||w))])}
-// ---------- лаборатория ----------
-const labSlots=()=>1+eff('labSlots');
-const labTime=()=>Math.round(60*Math.pow(.8,eff('labSpeed')));
-const labSample=()=>Math.min(1,.5+eff('labData')*.25); // доля наблюдений, которую успевает обработать лаборатория
-function labStart(gid,auto){const L=S.lab;const mine=L.runs.filter(r=>!!r.autoR==!!auto).length;if(mine>=(auto?1+eff('autoSlots'):labSlots()))return 'все слоты заняты';const g=auto?auto:S.dict.groups.find(x=>x.id==gid);if(!g||g.words.length<2)return 'в группе нужно хотя бы 2 слова';
- const h={id:L.nid++,name:g.name,words:g.words.slice(),t:S.t,auto:auto?1:0,res:null};L.hyp.unshift(h);L.runs.push({hid:h.id,words:h.words,end:S.t+labTime(),start:S.t,autoR:auto?1:0});return ''}
-function corr(x,y){const n=x.length;if(n<5)return 0;let mx=0,my=0;for(let i=0;i<n;i++){mx+=x[i];my+=y[i]}mx/=n;my/=n;let a=0,b=0,c=0;for(let i=0;i<n;i++){const dx=x[i]-mx,dy=y[i]-my;a+=dx*dy;b+=dx*dx;c+=dy*dy}return b&&c?a/Math.sqrt(b*c):0}
-function labTick(){const L=S.lab;L.runs.filter(R=>S.t>=R.end).forEach(R=>{L.runs=L.runs.filter(x=>x!==R);labFinish(R)})}
-// Анализ журнала просмотров: лаборатория берёт долю людей (объём данных) и смотрит, задерживаются ли одни и те же люди на всех словах группы
-function labFinish(R){const L=S.lab,h=L.hyp.find(x=>x.id==R.hid);if(!h)return;const res=h.res={};
- const keyOf=w=>lemmaOf(w)||w;const ks=[...new Set(R.words.map(keyOf))];const frac=labSample();
- const us=S.U.filter(u=>u.ld&&u.ld[0]>=6&&((u.id*2654435761)>>>0)%1000<frac*1000);
- const mean=(o,a)=>o[a]?o[a+1]/o[a]:null;const per={};let obs=0;
- for(const u of us){const base=u.ld[1]/u.ld[0];for(const k of ks){const o=u.lw&&u.lw[k];if(!o)continue;const n=o[0]+o[2];obs+=n;if(n<1)continue;(per[k]||(per[k]={}))[u.id]=[(o[1]+o[3])/n-base,mean(o,0),mean(o,2),base,n]}}
- res.obs=obs;const ws=ks.filter(k=>per[k]&&Object.keys(per[k]).length>=8);const ids=[...new Set(ws.flatMap(k=>Object.keys(per[k])))];res.ag=ids.length;
- if(obs<120||ids.length<20||ws.length<2){res.k='few';res.why=[];if(obs<120)res.why.push('просмотров публикаций с этими словами: '+obs+' из 120');if(ids.length<20)res.why.push('людей с повторными просмотрами: '+ids.length+' из 20');if(ws.length<2)res.why.push('слов с достаточными данными: '+ws.length+' из 2');res.unseen=ks.filter(k=>!per[k]);done(h);return}
- const pc={};for(let i=0;i<ws.length;i++)for(let j=i+1;j<ws.length;j++){const A=per[ws[i]],Bm=per[ws[j]];const sh=Object.keys(A).filter(id=>Bm[id]);if(sh.length<15)continue;pc[ws[i]+'|'+ws[j]]=corr(sh.map(id=>A[id][0]),sh.map(id=>Bm[id][0]))}
- const pr=(a,b)=>pc[a+'|'+b]!=null?pc[a+'|'+b]:pc[b+'|'+a];
- let core=[];for(const w of ws){const c=[w];for(const v of ws)if(v!=w&&c.every(x=>(pr(x,v)||0)>.15))c.push(v);if(c.length>core.length)core=c}
- const pairs=[];for(let i=0;i<core.length;i++)for(let j=i+1;j<core.length;j++)pairs.push(pr(core[i],core[j])||0);const coh=pairs.length?pairs.reduce((a,b)=>a+b,0)/pairs.length:0;
- // оценка человека по ядру слов; устойчивость — совпадение по двум половинам журнала
- const sc={},sn={},h0={},h1={};for(const k of core)for(const id in per[k]){const x=per[k][id];sc[id]=(sc[id]||0)+x[0]*x[4];sn[id]=(sn[id]||0)+x[4];if(x[1]!=null&&x[2]!=null){h0[id]=(h0[id]||0)+x[1]-x[3];h1[id]=(h1[id]||0)+x[2]-x[3]}}
- for(const id in sc)sc[id]/=sn[id];const sid=Object.keys(sc);const noise=Math.max(0,.3-eff('labAcc')*.1);
- const tstat=(vals,t)=>{const a=[],b=[];for(const i in vals){const u=byId(+i);if(!u)continue;(topicInterest(u,t)>.35?a:b).push(vals[i])}if(a.length<5||b.length<5)return null;
-  const ma=a.reduce((x,y)=>x+y,0)/a.length,mb=b.reduce((x,y)=>x+y,0)/b.length,va=a.reduce((x,y)=>x+(y-ma)**2,0)/(a.length-1),vb=b.reduce((x,y)=>x+(y-mb)**2,0)/(b.length-1);return (ma-mb)/Math.sqrt(va/a.length+vb/b.length+1e-9)};
- let best=-1,bc=0;for(let t=0;t<NT8;t++){const t0=tstat(sc,t);if(t0==null)continue;const tt=t0+gauss()*noise*3;if(tt>bc){bc=tt;best=t}}
- // устойчивость: та же разница должна повториться в каждой половине журнала отдельно
- const s0=best>=0?tstat(h0,best):null,s1=best>=0?tstat(h1,best):null;
- if(best>=0&&bc>3&&coh>.15&&(s0==null||s1==null)){res.k='few';res.why=['похоже на устойчивую группу, но в каждой половине наблюдений пока мало заинтересованных людей — повтори исследование, когда данных станет больше'];res.core=core;done(h);return}
- const st=best>=0?Math.min(s0||0,s1||0):0;
- Object.assign(res,{st,coh,core,match:bc,rest:ks.filter(w=>!core.includes(w))});
- if(st>1.5&&coh>.15&&bc>3&&core.length>=2){const ex=L.cats.find(c=>c.t==best);if(ex){res.k='known';res.cat=ex.id;ex.words=[...new Set(ex.words.concat(core))];ex.known=Math.min(100,ex.known+15)}
-  else{const c={id:L.nid++,t:best,name:TOPICS8[best][0],words:core.slice(),known:35,auto:h.auto,at:S.t};L.cats.push(c);res.k=res.rest.length?'partial':'found';res.cat=c.id;if(h.auto)S.auto.found++;
-   if(typeof toast=='function')toast('🔬 '+(h.auto?'Машина нашла':'Открыта')+' категория: <b>'+c.name+'</b>',12000)}}
- else{res.k='no';res.why=[];if(coh<=.15)res.why.push('слова относятся к разным направлениям: разные люди задерживаются на разных словах');if(st<=1.5)res.why.push('закономерность неустойчива: в одной из половин наблюдений она не повторилась');if(bc<=3&&coh>.15)res.why.push('связь слов есть, но не похожа на устойчивый интерес')}
- done(h)}
-function done(h){if(typeof mail=='function')mail('<b>Лаборатория:</b> «'+esc(h.name)+'» — '+{found:'категория обнаружена',partial:'гипотеза частично подтверждена',known:'это уже известная категория',few:'недостаточно данных',no:'гипотеза не подтверждена'}[h.res.k]+'.')}
-// ---------- эксперименты ----------
-function expStart(ruleIdx,dur,sel){if(S.exp&&S.exp.on)return 'эксперимент уже идёт';const r=S.rules[ruleIdx];if(!r)return 'выбери правило';
- const pool=S.U.filter(u=>sel=='all'||!S.lab.cats.length||u.cls[sel]>.6);if(pool.length<20)return 'мало людей для эксперимента';
- pool.forEach(u=>u.grp=Math.random()<.5?'A':'B');S.exp={on:true,rule:ruleIdx,rn:ruleName(r),start:S.t,end:S.t+dur,sel,A:{},B:{}};return ''}
-function expBonus(p){const r=S.rules[S.exp.rule];return r&&ruleOk(r,p)?r.act:0}
-function expObs(u,d,h){const E=S.exp;if(!E||!E.on||!u.grp)return;const G=E[u.grp];const x=G[u.id]||(G[u.id]=[0,0,0,0,0,0]);x[0]++;x[1]+=d;x[2]+=h.lk;x[3]+=h.q}
-function expTick(){const E=S.exp;if(!E||!E.on)return;if(S.t<E.end)return;E.on=false;S.U.forEach(u=>u.grp=null);
- const m=(G,k)=>Object.values(G).filter(x=>x[0]>=2).map(x=>k=='ret'?x[1]/x[0]:k=='views'?x[0]:k=='likes'?x[2]/x[0]:x[3]);
- const ks=['ret','views'].concat(has('mReact')?['likes']:[]).concat(has('mQuit')?['quits']:[]);E.res={};
- for(const k of ks){const a=m(E.A,k),b=m(E.B,k);const ma=a.reduce((s,x)=>s+x,0)/(a.length||1),mb=b.reduce((s,x)=>s+x,0)/(b.length||1);
-  const va=a.reduce((s,x)=>s+(x-ma)**2,0)/Math.max(1,a.length-1),vb=b.reduce((s,x)=>s+(x-mb)**2,0)/Math.max(1,b.length-1);const se=Math.sqrt(va/Math.max(1,a.length)+vb/Math.max(1,b.length));const tt=se?(ma-mb)/se:0;
-  E.res[k]={a:ma,b:mb,n:[a.length,b.length],t:tt,sig:a.length>=15&&b.length>=15&&Math.abs(tt)>2}}
- S.expHist.unshift(E);S.expHist.length=Math.min(8,S.expHist.length);if(typeof mail=='function')mail('<b>Эксперименты:</b> «'+esc(E.rn)+'» завершён. Удержание: '+(E.res.ret.sig?(E.res.ret.a>E.res.ret.b?'лучше':'хуже')+' контрольной группы':'разница не доказана')+'.')}
-// ---------- автоматическое определение интересов ----------
-const clsPerTick=()=>has('classify')?Math.round(2*Math.pow(2,eff('clsSpeed'))):0;
-function classObs(u,p,d){if(!has('classify'))return;const C=u.co||(u.co={});C.n=(C.n||0)+1;C.d=(C.d||0)+d;for(const c of S.lab.cats){if(!postIn(p,c.t))continue;const x=C[c.id]||(C[c.id]=[0,0]);x[0]++;x[1]+=d}}
-function classTick(){const n=clsPerTick();if(!n||!S.U.length)return;const acc=eff('clsAcc');
- for(let i=0;i<n;i++){const u=S.U[(S.clsI=((S.clsI||0)+1)%S.U.length)];const C=u.co;if(!C||!C.n)continue;const avg=C.d/C.n;
-  for(const c of S.lab.cats){const x=C[c.id];if(!x||x[0]<2){continue}const diff=x[1]/x[0]-avg;const z=diff/Math.max(1,avg*.6)*Math.sqrt(Math.min(x[0],20))*(1+acc*.3);u.cls[c.id]=clamp(sigm(z*1.5-.5+gauss()*Math.max(0,.6-acc*.15)),0,1)}
-  S.clsDone=(S.clsDone||0)+1}}
-// ---------- персонализация ----------
-function persScore(u,p){if(!has('pers'))return 0;let s=0;for(const c of S.lab.cats){const k=u.cls[c.id];if(k&&postIn(p,c.t))s+=k*(1.2+eff('persW')*.4)}
- if(has('cf')&&p.likers&&u.likes.length){let m=0;for(const lid of p.likers){const v=byId(lid);if(v&&v!==u&&v.likes.some(x=>u.likes.includes(x)))m++}s+=Math.min(1.5,m*.5)}
- if(has('fmtPref')){const fp=u.fmtD[p.fmt];if(fp&&fp[0]>=3)s+=clamp(fp[1]/fp[0]/(S.avgRet||8)-1,-1,1)*.8}
- if(has('contPred')&&p.views>=5)s-=p.quits/p.views*6;return s}
-// ---------- автоматическое исследование ----------
-function autoTick(){if(!has('autoRes')||S.t<S.auto.next)return;for(let k=0;k<6;k++)if(autoTry())return;S.auto.next=S.t+10}
-function autoTry(){S.auto.next=S.t+Math.round(90*Math.pow(.75,eff('autoSpeed')));if(S.lab.runs.filter(r=>r.autoR).length>=1+eff('autoSlots'))return true;
- const acc=eff('autoAcc');const known=new Set(S.lab.cats.flatMap(c=>c.words));const knownT=new Set(S.lab.cats.map(c=>c.t));
- // 1) случайный человек и слова из постов, на которых он задержался дольше всего
- const u=pk(S.U.filter(x=>x.on&&x.hh.length>=8));if(!u)return false;const sc={};
- for(const h of u.hh){const p=POOL.find(q=>q.id==h.p);if(!p)continue;for(const x of p.words){if(!x.l||known.has(x.l))continue;sc[x.l]=(sc[x.l]||0)+h.dw}}
- let cand=Object.keys(sc).sort((a,b)=>sc[b]-sc[a]);if(acc>=3)cand=cand.filter(l=>!(LEMMA_TOPIC[l]||[]).some(t=>knownT.has(t)));if(!cand.length)return false;
- let ws;if(acc<1)ws=cand.slice(0,4); // ранняя версия: просто самые «удерживающие» слова — часто из разных тем
- else{const L0=cand[0];const T=LEMMA_TOPIC[L0]||[];const vocab=new Set();for(const p of POOL)for(const x of p.words)if(x.l)vocab.add(x.l);
-  ws=[L0].concat([...vocab].filter(l=>l!=L0&&!known.has(l)&&(LEMMA_TOPIC[l]||[]).some(t=>T.includes(t)))).slice(0,4);
-  if(acc<2&&Math.random()<.5){const noise=[...vocab].filter(l=>!ws.includes(l));if(noise.length)ws[ws.length<4?ws.length:3]=pk(noise)}}
- if(ws.length<2)return false;S.auto.runs++;labStart(null,{name:'Авто: '+ws.slice(0,2).join(' + '),words:ws});return true}
-// ---------- технологии ----------
-// [id, раздел, название, описание, цена, требования, эффект {ключ:+n}, условие-цель]
-let T8=[
-['split','Аудитории','Выделить аудиторию','у отправленного поста — кнопка «выделить лайкнувших»: новая аудитория',30,[],{}],
-['aud2','Аудитории','Ещё 2 аудитории','+2 места для аудиторий',35,['split'],{audCap:2}],
-['splitLong','Аудитории','Выделить досмотревших','аудитория из тех, кто смотрел пост дольше обычного',35,['split'],{}],
-['inbox1','Входящие','Широкие входящие','+2 поста во «Входящих», живут на 4 с дольше',40,['split'],{inboxCap:2,inboxLife:4}],
-['rules','Правила','Правила и словарь','кликай слова в постах; правила сами отправляют посты аудиториям',45,[],{}],
-['srv','Серверы','Сервер','вдвое больше одновременных пользователей',0,[],{}],
-['slot1','Правила','Второе правило','+1 активное правило',50,['rules'],{ruleSlots:1}],
-['and','Правила','Условие И','два условия в одном правиле',60,['slot1'],{ruleConds:1}],
-['rspeed1','Обработка','Быстрая проверка правил','правила проверяются раз в 7 с вместо 10',65,['rules'],{ruleSpeed:3}],
-['groups','Словарь','Группы слов','объединяй слова в группы и используй их в правилах',70,['rules'],{}],
-['slot2','Правила','Третье правило','+1 активное правило',80,['and'],{ruleSlots:1}],
-['or','Правила','Условие ИЛИ','сочетай условия через ИЛИ',90,['and'],{}],
-['dictcap1','Словарь','Словарь на 60 слов','+40 мест в словаре',95,['rules'],{dictCap:40}],
-['prules','Правила','Персональные правила','ЕСЛИ человек лайкал посты группы A ТО показывать ему посты группы B',105,['groups'],{}],
-['lab','Лаборатория','Лаборатория','проверяй группы слов: существует ли такая аудитория',115,['groups'],{}],
-['forms','Словарь','Словоформы','«машина», «машину», «машины» — одно слово',130,['rules'],{}],
-['compact','Интерфейс','Компактная лента','во «Входящих» видно вдвое больше постов',145,['rules'],{feedRows:6}],
-['aud3','Аудитории','Ещё 3 аудитории','+3 места для аудиторий',155,['lab'],{audCap:3}],
-['inbox2','Входящие','Поток быстрее','посты во «Входящие» приходят чаще, +2 места',180,['aud3'],{inboxSpeed:2,inboxCap:2}],
-['labspd1','Лаборатория','Ускорение исследований I','исследование −20% времени',205,['lab'],{labSpeed:1}],
-['gcap1','Словарь','Больше групп','+3 группы',230,['groups'],{groupCap:3}],
-['exp','Эксперименты','Эксперименты','сравни правило на половине аудитории с контрольной группой',255,['lab'],{}],
-['mReact','Метрики','Реакции','видны лайки, комментарии, репосты, сохранения; условия по ним в правилах',280,['exp'],{}],
-['labslot1','Лаборатория','Второй слот исследований','два исследования одновременно',295,['labspd1'],{labSlots:1}],
-['slot3','Правила','Четвёртое правило','+1 активное правило',330,['slot2'],{ruleSlots:1}],
-['adEff1','Деньги','Баннер получше','+30% к доходу баннера',355,['rules'],{adEff:.3}],
-['labdata1','Лаборатория','Больше данных','лаборатория обрабатывает 75% наблюдений вместо 50%',385,['labslot1'],{labData:1}],
-['mQuit','Метрики','Уходы и сессии','видны уходы с платформы и длина сессий',420,['mReact'],{}],
-['adload','Деньги','Плотность рекламы','ползунок: больше рекламы — больше денег и больше уходов',450,['mQuit'],{}],
-['users','Пользователи','Наблюдение за пользователями','приложение «Пользователи»: профиль, лента, удержание каждого поста',500,['exp'],{}],
-['cond3','Правила','Третье условие','три условия в одном правиле',550,['or'],{ruleConds:1}],
-['uhist','Пользователи','Подробная история','видно, после каких постов человек ушёл, что пропустил и что лайкнул',625,['users'],{}],
-['labacc1','Лаборатория','Точность исследований I','меньше ошибок при определении аудитории',695,['labdata1'],{labAcc:1}],
-['rspeed2','Обработка','Параллельная проверка','правила проверяются каждые 3 с',780,['rspeed1','slot3'],{ruleSpeed:4}],
-['classify','Алгоритм','Определение интересов','машина сама определяет интересы людей по открытым категориям',870,['users'],{}],
-['clsspd1','Алгоритм','Классификация быстрее','вдвое больше людей за секунду',975,['classify'],{clsSpeed:1}],
-['clsacc1','Алгоритм','Классификация точнее','меньше ошибочных интересов',1080,['classify'],{clsAcc:1}],
-['pers','Алгоритм','Персонализация','лента подбирает посты под интересы каждого человека',1180,['classify'],{}],
-['persw','Алгоритм','Сильная персонализация','интересы весят больше',1355,['pers'],{persW:1}],
-['aud4','Аудитории','Ещё 5 аудиторий','+5 мест для аудиторий',1555,['classify'],{audCap:5}],
-['labslot2','Лаборатория','Третий слот исследований','три исследования одновременно',1770,['labacc1'],{labSlots:1}],
-['cf','Алгоритм','Похожие пользователи','показывай то, что понравилось людям со схожими лайками',1995,['pers','mReact'],{}],
-['fmtPref','Алгоритм','Предпочтения форматов','учитывать, какие форматы человек досматривает',2185,['cf'],{}],
-['clsspd2','Алгоритм','Классификация ×4','ещё вдвое быстрее',2375,['clsspd1'],{clsSpeed:1}],
-['contPred','Алгоритм','Прогноз продолжения','не показывать то, после чего люди уходят',2600,['fmtPref','mQuit'],{}],
-['adEff2','Деньги','Таргетированный баннер','+60% к доходу баннера',2795,['pers'],{adEff:.6}],
-['autoRes','Автоисследование','Автоматическое исследование','машина сама ищет новые темы',3160,['contPred','labslot2'],{}],
-['autoacc1','Автоисследование','Связи слов','машина группирует слова по смыслу, а не случайно',3485,['autoRes'],{autoAcc:1}],
-['autospd1','Автоисследование','Быстрый поиск','исследования чаще',3965,['autoRes'],{autoSpeed:1}],
-['autoacc2','Автоисследование','Чистые гипотезы','только слова из постов с самым долгим удержанием',4365,['autoacc1'],{autoAcc:1}],
-['autoslot','Автоисследование','Параллельный поиск','+1 автоматическое исследование',5005,['autospd1'],{autoSlots:1}],
-['clsacc2','Алгоритм','Глубокие профили','точная классификация',5695,['clsacc1','autoacc1'],{clsAcc:2}],
-['autoacc3','Автоисследование','Редкие интересы','машина замечает редкие темы',6095,['autoacc2'],{autoAcc:1}],
-['autonomy','Автоисследование','Автономная система','правила, исследования и персонализация работают сами',6620,['autoacc3','clsacc2','autoslot'],{autoSpeed:2,ruleSpeed:2}]];
-let TECH8=T8.map(([id,b,n,d,p,req,ef],i)=>({id,b,n,d,p,req,ef,i}));
-const srvPrice=()=>Math.round(40*Math.pow(2.4,S.srvLvl-1));
-function techOk8(t){return t.req.every(has)}
-function buy8(id){if(id=='srv'){const c=srvPrice();if(S.m<c)return false;S.m-=c;S.srvLvl++;S.nb++;return true}const t=TECH8.find(x=>x.id==id);if(!t||has(id)||!techOk8(t)||S.m<t.p)return false;S.m-=t.p;S.f[id]=1;S.nb++;for(const k in t.ef)S.eff[k]=(S.eff[k]||0)+t.ef[k];if(id=='forms')dictRemap();if(id=='rules')S.f.dict=1;return true}
-// ---------- цели ----------
-let GOALS=[['send1','Отправь пост аудитории «Все»',()=>(S.nSent||0)>0],['split','Купи «Выделить аудиторию»',()=>has('split')],['aud1','Выдели первую аудиторию',()=>S.aud.length>1],['ren','Переименуй аудиторию',()=>S.aud.some(a=>a.renamed)],
- ['aud3','Заведи 3 аудитории',()=>S.aud.length>=4],['ret','Добейся среднего удержания 12 с',()=>(S.avgRet||0)>=12],['rules','Открой правила и словарь',()=>has('rules')],['w5','Собери 5 слов',()=>Object.keys(S.dict.words).length>=5],
- ['rule1','Создай правило, которое отправляет посты аудитории',()=>S.rules.some(r=>r.kind=='send')],['g1','Создай группу слов',()=>S.dict.groups.length>0],['gr','Используй группу в правиле',()=>S.rules.some(r=>r.conds.some(c=>c.k=='groupAny'||c.k=='groupAll'))],
- ['lab','Открой лабораторию',()=>has('lab')],['cat1','Подтверди первую категорию',()=>S.lab.cats.length>0],['caud','Создай аудиторию из категории',()=>S.aud.some(a=>a.auto!=null)],['exp1','Проведи первый эксперимент',()=>S.expHist.length>0],
- ['users','Открой наблюдение за пользователями',()=>has('users')],['cls','Открой определение интересов',()=>has('classify')],['pers','Открой персонализацию',()=>has('pers')],['auto','Открой автоматическое исследование',()=>has('autoRes')],
- ['autoF','Получи категорию, найденную машиной',()=>S.auto.found>0],['autonomy','Запусти автономную систему',()=>has('autonomy')]];
-function goalsTick(){if(S.t%2)return;for(const[id,n,ok]of GOALS)if(!S.goals[id]&&ok()){S.goals[id]=S.t;if(typeof toast=='function')toast('🎯 Цель выполнена: '+n)}}
-const nextGoal=()=>GOALS.find(([id])=>!S.goals[id]);
-
-const CONDN={fmt:'формат — …',retGt:'удержание выше … с',retLt:'удержание ниже … с',retAbove:'удержание выше среднего',retBelow:'удержание ниже среднего',viewsGt:'просмотров больше …',viewsLt:'просмотров меньше …',word:'содержит слово …',groupAny:'содержит слово из группы …',groupAll:'содержит все слова группы …',cat:'относится к категории …',likesGt:'лайков больше …% просмотров',comsGt:'комментариев больше …%',quitsGt:'уходов после поста больше …%'};
-const condTxt=c=>{const v=c.k=='fmt'?FORMATS[c.v]:c.k=='word'?'«'+c.v+'»':c.k.startsWith('group')?'«'+((S.dict.groups.find(g=>g.id==c.v)||{}).name||'?')+'»':c.k=='cat'?'«'+((S.lab.cats.find(x=>x.id==c.v)||{}).name||'?')+'»':c.v;return CONDN[c.k].replace('…',v)};
-const ruleName=r=>r.kind=='send'?'ЕСЛИ '+r.conds.map(condTxt).join(r.join=='or'?' ИЛИ ':' И ')+' → отправить аудитории «'+((S.aud.find(a=>a.id==r.aud)||{}).name||'?')+'»':r.kind=='pers'?'ЕСЛИ человек '+(r.who=='l'?'лайкал':'лайкал или долго смотрел')+' посты «'+grpName(r.ga)+'» ТО '+RACT[r.act]+' ему посты «'+grpName(r.gb)+'»':'ЕСЛИ '+r.conds.map(condTxt).join(r.join=='or'?' ИЛИ ':' И ')+' → '+RACT[r.act];
-
-const grpName=id=>{if(typeof id=='string'&&id[0]=='c')return (S.lab.cats.find(x=>x.id==+id.slice(1))||{}).name||'?';return (S.dict.groups.find(x=>x.id==+id)||{}).name||'?'};
-// ===================== ЛЕНТА.EXE v9 — ИГРОВОЙ ЦИКЛ: клик, ленты-генераторы, множители =====================
-// Деньги = секунды внимания × ставка рекламы. Каждое число считается по настоящей симуляции людей:
-// клик показывает пост нескольким людям, лента показывает свои посты своим людям; удержание — из interaction().
-const RATE=.01; // $ за секунду внимания
-const rate=()=>RATE*(1+eff('adEff'));
-// ---------- один показ ----------
-function view(u,p){const r=interaction(u,p);const d=r.dw;p.views++;p.dwT+=d;tire(u,p);logView(u,p,d);classObs(u,p,d);
- const fd=u.fmtD[p.fmt]||(u.fmtD[p.fmt]=[0,0]);fd[0]++;fd[1]+=d;addWin(d);
- if(Math.random()<r.pr.like){p.likes++;engage(u,p,'l');(p.likers||(p.likers=[])).push(u.id);u.likes.push(p.id);if(u.likes.length>20)u.likes.shift()}
- if(fd[0]>3&&d>fd[1]/fd[0]*1.4){engage(u,p,'d');(p.longers||(p.longers=[])).push(u.id)}
- const h={p:p.id,dw:+d.toFixed(1),sk:r.skip,lk:0,q:0,t:S.t};u.hh.push(h);if(u.hh.length>40)u.hh.shift();(p.viewers||(p.viewers=[])).push(u.id);
+const TONE=['негативная','нейтральная','позитивная'];
+function mkPost(au,o={}){const t=o.t!=null?o.t:topicFor(au);const T=TOPICS8[t];const cats=[...T2C[t]];if(Math.random()<.35){const c=Math.floor(Math.random()*NC);if(!cats.includes(c))cats.push(c)}
+ let txt=o.txt||pk(T[3]);const long=Math.random()<.25;if(long&&!o.txt)txt+='. '+pk(TOPICS8[Math.floor(Math.random()*TOPICS8.length)][3])+'. '+pk(['Пишите, что думаете.','Это только начало.','Сохраните себе.','Расскажу подробнее позже.']);
+ const media=Math.random()<.35?'фото':Math.random()<.18?'видео':'';const tone=o.tone!=null?o.tone:Math.random()<.35?0:Math.random()<.6?1:2;const emo=o.emo!=null?o.emo:Math.round(Math.random()*100);
+ const words=txt.split(/\s+/).map(normW).filter(w=>w.length>=2);
+ const p={id:++S.pid,au:au?au.id:0,auN:au?au.n:'«Лента»',av:au?au.av:0,txt,words,lem:words.map(w=>lemma(w)),cats,tone,emo,len:txt.length,media,ph:media?Math.floor(Math.random()*100):null,born:S.t,
+  views:0,likes:0,coms:0,shares:0,att:0,pri:0,blocked:false,boost:0,log:[],ruleOk:false,ev:o.ev||null,comments:[],dayViews:0,lastV:S.t};
+ S.P.push(p);PMAP.set(p.id,p);S.queue.posts++;return p}
+function topicFor(u){if(!u)return Math.floor(Math.random()*TOPICS8.length);const w=TOPICS8.map((T,t)=>Math.pow(u.it[T2C[t][0]]/100,2)+.03);let x=Math.random()*w.reduce((a,b)=>a+b),t=0;for(;t<w.length;t++){x-=w[t];if(x<=0)break}return Math.min(t,TOPICS8.length-1)}
+// словоформы: якоря из справочника + грубая основа для остальных слов
+const lemma=w=>FORM[w]||(w.length>5?w.slice(0,w.length-2):w);
+// ---------- поведение: просмотр публикации ----------
+function interest(u,p){let m=0;for(const c of p.cats)m=Math.max(m,u.it[c]/100);return m}
+function dwellOf(u,p){const I=interest(u,p);if(Math.random()<u.scroll*.6&&I<.25)return .5+Math.random();const base=p.media=='видео'?20:p.media=='фото'?8:Math.min(30,p.len/15);return Math.max(.5,base*(.25+I*1.3)*(1+p.emo/400)*(.7+Math.random()*.6))}
+function viewPost(u,p){const d=dwellOf(u,p);const I=interest(u,p);p.views++;p.dayViews++;p.att+=d;p.lastV=S.t;u.dayT+=d;u.dayV++;u.dayD+=d;
+ const act=[];if(Math.random()<u.like*(.1+I*.6)*(p.tone==2?1.2:1)){p.likes++;act.push('лайк')}
+ if(Math.random()<u.com*(.05+I*.3+(p.tone==0?.15:0)+u.argue*p.emo/300)){p.coms++;act.push('комментарий');if(p.comments.length<40)p.comments.push(mkComment(u,p))}
+ if(Math.random()<u.share*(.03+I*.25)){p.shares++;act.push('репост');S.day.shares=(S.day.shares||0)+1}
+ u.hist.unshift({p:p.id,a:act.length?act.join(', '):'просмотр',t:S.t,d:+d.toFixed(1)});if(u.hist.length>100)u.hist.pop();
  return d}
-// ---------- входящие и клик ----------
-const inboxCap9=()=>3+eff('inboxCap');const clickReach=()=>3*Math.pow(2,eff('clickPow'));
-function predict(p,M){// прогноз: средняя секунда удержания на выборке из 6 человек, без побочных эффектов
- const L=M||S.U;let s=0,n=Math.min(6,L.length);for(let i=0;i<n;i++)s+=interaction(L[Math.floor(Math.random()*L.length)],p).dw;return n?s/n:0}
-function inboxTick(){if(S.t>=S.nextIn&&S.inbox.length<inboxCap9()){const p=mkPost(pk(S.U));p.inAt=S.t;p.pred=predict(p);S.inbox.push(p);S.nextIn=S.t+Math.max(1,2-eff('inboxSpeed'))}
- S.inbox=S.inbox.filter(p=>S.t-p.inAt<20)}
-function clickPost(id){const i=S.inbox.findIndex(p=>p.id==id);if(i<0)return null;const p=S.inbox.splice(i,1)[0];const n=clickReach();let sum=0;
- for(let k=0;k<n;k++)sum+=view(pk(S.U),p);const $=sum*rate();S.m+=$;S.earned+=$;S.clickEarn=(S.clickEarn||0)+$;S.nClick=(S.nClick||0)+1;S.stat.inc=(S.stat.inc||0)+$;
- p.clickRet=sum/n;S.recent.unshift(p);S.recent.length=Math.min(6,S.recent.length);return {sec:sum/n,$}}
-function autoClick(){if(!has('autoClick')||S.t%Math.max(1,4-eff('autoClickSpd')))return;if(!S.inbox.length)return;const p=S.inbox.slice().sort((a,b)=>b.pred-a.pred)[0];const r=clickPost(p.id);if(r&&typeof floatTxt=='function')floatTxt('🤖 +'+r.sec.toFixed(1)+' с · +$'+f(r.$))}
-// ---------- аудитории для лент ----------
-// «Те, кто залип на таком»: зрители, смотревшие пост дольше обычного, плюс люди, которые по журналу просмотров тоже залипали на эти слова
-function lookalike(p){const lem=p.words.map(x=>x.l).filter(Boolean);const ids=new Set(p.longers||[]);
- for(const u of S.U){if(!u.lw||!u.ld||!u.ld[0])continue;const base=u.ld[1]/u.ld[0];for(const l of lem){const o=u.lw[l];if(!o)continue;const n=o[0]+o[2];if(n>=1&&(o[1]+o[3])/n>base*1.25){ids.add(u.id);break}}}
- return [...ids]}
-// ---------- ленты-генераторы ----------
-const feedCap=()=>1+(has('split')?1:0)+eff('audCap');
-const feedBase=i=>5*Math.pow(4,i);
-const lvlPrice=F=>Math.round(feedBase(F.i)*Math.pow(1.12,F.lvl)*100)/100;
-const MILES=[10,25,50,100,200];
-function feedSpeed(F){let m=1;for(const x of MILES)if(F.lvl>=x)m*=1.5;return m*(1+eff('feedSpd'))}
-const feedCycle=F=>5/feedSpeed(F);
-function feedMembers(F){if(F.aud==null)return S.U;const A=S.aud.find(a=>a.id==F.aud);return A?audMembers(A):S.U}
-function candidate(F,M){// пост, который лента покажет: с фильтром — только посты с её словами; с «отбором» — лучший из нескольких по прогнозу
- const pickN=has('pick')?(has('pick5')?5:3):1;let best=null,bv=-1;const fw=F.filter||[];const topics=[...new Set(fw.flatMap(w=>LEMMA_TOPIC[lemmaOf(w)||w]||[]))];
- for(let i=0;i<pickN;i++){let p=null;for(let k=0;k<(fw.length?12:1);k++){const q=mkPost(pk(S.U),topics.length&&Math.random()<.8?{t:pk(topics)}:{});if(!fw.length||fw.some(w=>postHas(q,w))){p=q;break}}if(!p)p=mkPost(pk(S.U));
-  const v=pickN>1?predict(p,M):0;if(v>bv||!best){bv=v;best=p}}return best}
-function feedTick(F){if(!F.on)return;F.prog=(F.prog||0)+1/feedCycle(F);if(F.prog<1)return;const cycles=Math.floor(F.prog);F.prog-=cycles;
- const M=feedMembers(F).filter(u=>u);if(!M.length)return;const vpp=Math.min(M.length,Math.round(Math.pow(1.5,eff('reach'))));const total=F.lvl*vpp*cycles;
- // честная выборка: до 16 реальных показов, остальное — по их среднему
- const n=Math.min(total,16);let sum=0;for(let k=0;k<n;k++){const u=pk(M);const p=candidate(F,has('pers')?[u]:M);sum+=view(u,p)}const avg=n?sum/n:0;const $=avg*total*rate();
- S.m+=$;S.earned+=$;S.stat.inc=(S.stat.inc||0)+$;F.earn=(F.earn||0)+$;F.ret=F.ret==null?avg:F.ret*.8+avg*.2;F.last=$;F.flash=S.t}
-function feedRate(F){const M=feedMembers(F);const vpp=Math.min(M.length,Math.round(Math.pow(1.5,eff('reach'))));return F.lvl*vpp*(F.ret||8)*rate()/feedCycle(F)}
-function buyFeed(){if(S.feeds.length>=feedCap())return 'нет места для новой ленты';return ''}
-function addFeed(name,aud){const F={id:S.feedN++,i:S.feeds.length,name,aud,lvl:1,prog:0,on:true,filter:[],ret:null};S.feeds.push(F);return F}
-function lvlUp(F,n=1){let k=0;while(k<n){const c=lvlPrice(F);if(S.m<c)break;S.m-=c;F.lvl++;k++;if(MILES.includes(F.lvl)&&typeof toast=='function')toast('⚡ «'+esc(F.name)+'» ур. '+F.lvl+': лента крутится в 1,5 раза быстрее')}return k}
-// ---------- рост аудитории ----------
-function growTick(){const att=S.attH||0;const cap=srvCap();const g=att/600*(.5+(S.avgRet||8)/16)*Math.max(0,1-S.regTotal/cap);for(let i=0;i<Math.floor(g);i++)invite();if(Math.random()<g%1)invite()}
+const COMT={0:['Это возмутительно!','Кто за это ответит?','Опять двадцать пять','Позор','Я так и знал'],1:['Интересно','А подробнее?','Ну такое','Спасибо, что написали','Сохранил'],2:['Класс!','Обожаю такое','Лучший пост дня','Так держать!','❤️']};
+function mkComment(u,p){const tone=clamp(p.tone+(Math.random()<u.argue?-1:0)+(Math.random()<.2?1:0),0,2);return {n:u.n,txt:pk(COMT[tone]),tone}}
+// ---------- ранжирование (общая лента; персонализация — через правила по аудитории) ----------
+let RANK=[];
+function score(p){const age=(S.t-p.born)/TICK_DAY;return 2*Math.exp(-age/2)+Math.min(2,p.likes/(p.views+5)*6)+p.boost+p.pri}
+function rerank(){RANK=S.P.filter(p=>!p.blocked&&p.ruleOk!==null).map(p=>[score(p),p]).sort((a,b)=>b[0]-a[0]).slice(0,120).map(x=>x[1])}
+function pickFor(u){const L=RANK;if(!L.length)return null;let best=null,bs=-1e9;for(let i=0;i<Math.min(L.length,30);i++){const p=L[i];let s=score(p)+Math.random()*1.2-i*.03+audBoost(u,p);if(s>bs){bs=s;best=p}}return best}
+// ---------- день ----------
+function tickUsers(){let att=0,views=0;const perf=S.perf;
+ for(const u of S.U){if(u.gone)continue;if(Math.random()>u.v/TICK_DAY)continue;
+  // одна сессия: человек смотрит посты, пока не кончится время сессии (не больше 12 «замеров»)
+  let left=u.sess*60*(.6+Math.random()*.8);let n=0;while(left>0&&n<12){const p=pickFor(u);if(!p)break;const d=viewPost(u,p);left-=d*8;att+=d;views++;n++}
+  const tm=u.sess*60*.9-left;u.dayTime=(u.dayTime||0)+Math.max(0,tm)}
+ return {att,views}}
+function endDay(){const R=rep();let tsum=0,n=0,left=0;
+ for(const u of S.U){if(u.gone)continue;const avgD=u.dayV?u.dayD/u.dayV:0;u.ret7.push(avgD);if(u.ret7.length>7)u.ret7.shift();const r7=u.ret7.reduce((a,b)=>a+b,0)/u.ret7.length;
+  // скучно → заходит реже; интересно → возвращается к своей обычной частоте
+  if(u.ret7.length>=3&&r7<u.bore)u.v*=.94;else u.v=Math.min(u.visits,u.v*1.06+.02);
+  if(u.v<.2){u.gone=true;left++}
+  u.timeAvg=u.timeAvg==null?(u.dayTime||0)/60:u.timeAvg*.8+(u.dayTime||0)/60*.2;tsum+=u.timeAvg;n++;u.dayTime=0;u.dayV=0;u.dayD=0}
+ const timeAvg=n?tsum/n:0;const visits=n?S.U.filter(u=>!u.gone).reduce((s,u)=>s+u.v,0)/n:0;
+ // рост: репосты и «сарафан» пропорционально эффективности ленты
+ const shr=(S.day.shares||0)/Math.max(1,n);S.shareRate=shr;const joins=(S.reg-(S.left||0))*Math.min(.06,.007+.015*shr+.008*(timeAvg/20))*(1+eff('growth'))/R;let jn=Math.floor(joins);if(Math.random()<joins%1)jn++;
+ for(let i=0;i<jn;i++){if(S.U.length<SIMCAP)addUser();else S.reg++}
+ S.left=(S.left||0)+left*R;
+ const d={day:dayNo(),users:Math.round(S.reg-(S.left||0)),joined:jn,left:Math.round(left*R),timeAvg,visits,views:Math.round((S.day.views||0)*R),likes:S.P.reduce((s,p)=>s+p.likes,0),att:S.day.att||0,inc:S.day.inc||0,cost:S.day.cost||0,posts:S.P.length};
+ S.days.push(d);if(S.days.length>120)S.days.shift();S.day={};
+ // старение: забытые публикации уходят в архив
+ for(const p of S.P.slice()){const age=(S.t-p.born)/TICK_DAY;const idle=(S.t-p.lastV)/TICK_DAY;if((age>3&&p.dayViews<2)||age>12||idle>2){if(p.pri>0&&age<20)continue;archive(p)}p.dayViews=0}
+ for(const R of S.rules)R.eff7.push(R.effD||0),R.eff7.length>7&&R.eff7.shift(),R.effD=0;
+ econDay();eventsDay()}
+function archive(p){S.P=S.P.filter(x=>x!==p);S.arch.push(p);if(S.arch.length>4000){const o=S.arch.shift();PMAP.delete(o.id)}}
+function restore(p){S.arch=S.arch.filter(x=>x!==p);p.born=S.t;p.lastV=S.t;p.dayViews=0;S.P.push(p);S.queue.posts++}
+const dayNo=()=>Math.floor(S.t/TICK_DAY);
+function dateStr(t){const d=new Date(2000,0,1);d.setDate(d.getDate()+Math.floor((t??S.t)/TICK_DAY));return d.toLocaleDateString('ru',{day:'numeric',month:'long',year:'numeric'})}
+function timeStr(){const fr=(S.t%TICK_DAY)/TICK_DAY*24;return String(Math.floor(fr)).padStart(2,'0')+':'+String(Math.floor(fr%1*60)).padStart(2,'0')}
+// ---------- серверы, очереди, экономика ----------
+const capacity=()=>100*Math.pow(1.2,lvl('power'))*(S.perf);
+function sload(){const users=active()*.06;const rules=S.rules.filter(r=>r.on).reduce((s,r)=>s+r.conds.length,0)*S.P.length*.004*(1-eff('ruleOpt'));const data=Object.values(S.data).filter(Boolean).length*active()*.02;return users+rules+data+S.queue.rules*.05+S.queue.posts*.2}
+function serverTick(){const cap=capacity(),L=sload();S.load=L/cap;const spare=Math.max(.15,cap/L);
+ // обработка очередей пропорционально свободной мощности
+ const rp=Math.ceil(30*Math.min(1.5,spare)*(1+lvl('power')*.2));const did=Math.min(S.queue.rules,rp);S.queue.rules-=did;S.recalcSpeed=rp;if(did)rulesWork(did);
+ S.queue.posts=Math.max(0,S.queue.posts-Math.ceil(20*spare));S.queue.feed=S.load>1?Math.round((S.load-1)*50):0;S.queue.data=S.load>1?Math.round(Object.values(S.data).filter(Boolean).length*(S.load-1)*30):0}
+function econDay(){const cap=100*Math.pow(1.2,lvl('power'));const t=dayNo();S.elecP=1+.3*Math.sin(t/30*2*Math.PI)+.08*gauss();S.waterP=1+.25*Math.sin(t/45*2*Math.PI+1)+.06*gauss();
+ const cost=(cap*.0015*S.elecP*(1-eff('elecSave'))+cap*.0006*S.waterP*(1-eff('waterSave')));S.m-=cost;S.day.cost=cost;S.totals.cost+=cost;S.costDay=cost;
+ // отрицательный баланс — производительность падает постепенно
+ if(S.m<0)S.perf=Math.max(.3,S.perf-.05);else S.perf=Math.min(1,S.perf+.05)}
+const forecastCost=d=>{const cap=100*Math.pow(1.2,lvl('power'));let s=0;for(let i=1;i<=d;i++){const t=dayNo()+i;s+=cap*.0015*(1+.3*Math.sin(t/30*2*Math.PI))*(1-eff('elecSave'))+cap*.0006*(1+.25*Math.sin(t/45*2*Math.PI+1))*(1-eff('waterSave'))}return s};
+const adRate=()=>.006*(1+eff('ads'));
+function analyticsIncome(){const cats=Object.entries(S.data).filter(([k,v])=>v);if(!cats.length)return 0;const val={age:1,reg:1,int:2.2,beh:2.6,pref:3};const q=1+eff('dataQ');return active()*rep()*cats.reduce((s,[k])=>s+val[k],0)*.0004*q*Math.min(1,1/Math.max(.5,S.load))}
 // ---------- шаг ----------
-function step(){S.t++;inboxTick();autoClick();const m0=S.m;for(const F of S.feeds)feedTick(F);
- const inc=S.m-m0;S.attH=(S.attH||0)*.9+inc/rate()*.1;growTick();
- if(S.t%10==0){S.statH.push(Object.assign({t:S.t,ret:S.avgRet},S.stat));if(S.statH.length>30)S.statH.shift();S.stat={}}
- S.incS=(S.incS||0)*.9+((S.stat.inc||0)-(S.incPrev||0))*0;labTick();classTick();autoTick();goalsTick();if(typeof S.cpsT=='undefined')S.cpsT=0}
-const perSec=()=>{const h=S.statH.slice(-3);const s=h.reduce((a,x)=>a+(x.inc||0),0);return h.length?s/(h.length*10):0};
-// ---------- технологии v9 ----------
-T8=[
-['feed1','Ленты','Лента «Все»','генератор: сам показывает посты всем и приносит деньги',5,[],{}],
-['pick','Ленты','Отбор постов','лента выбирает из 3 постов тот, что смотрят дольше',6,['feed1'],{}],
-['split','Ленты','Своя аудитория','у продвинутого поста — «Сделать ленту из тех, кто залип»',8,['feed1'],{}],
-['clickPow1','Клик','Громкий клик','клик показывает пост вдвое большему числу людей',10,['feed1'],{clickPow:1}],
-['dict','Словарь','Словарь','клик по слову в посте — в словарь',13,['split'],{}],
-['filter','Ленты','Фильтр ленты','лента берёт только посты со словами, которые ты укажешь',17,['dict'],{}],
-['inbox1','Клик','Больше входящих','+2 поста во «Входящих»',22,['clickPow1'],{inboxCap:2}],
-['autoClick','Клик','Помощник','сам продвигает лучший пост раз в 4 с',28,['inbox1'],{}],
-['reach1','Ленты','Охват ×1,5','каждый пост ленты видят в 1,5 раза больше людей',36,['pick'],{reach:1}],
-['aud2','Ленты','Ещё 2 ленты','+2 места для лент',46,['filter'],{audCap:2}],
-['groups','Словарь','Группы слов','фильтр ленты — целая группа слов',59,['filter'],{}],
-['clickPow2','Клик','Вирусный клик','клик ещё ×2',76,['autoClick'],{clickPow:1}],
-['adEff1','Деньги','Баннер получше','+30% денег за секунду внимания',97,['reach1'],{adEff:.3}],
-['lab','Лаборатория','Лаборатория','проверь группу слов: есть ли такая аудитория. Найденная категория — лента, которая растёт сама',124,['groups'],{}],
-['pick5','Ленты','Отбор из 5','лента выбирает лучший из 5 постов',166,['reach1'],{}],
-['forms','Словарь','Словоформы','«машина», «машину» — одно слово',222,['dict'],{}],
-['autoClick2','Клик','Помощник быстрее','продвигает раз в 2 с',298,['autoClick'],{autoClickSpd:2}],
-['aud3','Ленты','Ещё 3 ленты','+3 места',399,['lab'],{audCap:3}],
-['labspd1','Лаборатория','Быстрые исследования','−20% времени',535,['lab'],{labSpeed:1}],
-['reach2','Ленты','Охват ×2,25','ещё ×1,5 зрителей',717,['adEff1'],{reach:1}],
-['feedSpd1','Ленты','Быстрые ленты','все ленты крутятся на 50% быстрее',960,['reach2'],{feedSpd:.5}],
-['labslot1','Лаборатория','Второй слот','два исследования одновременно',1287,['labspd1'],{labSlots:1}],
-['users','Пользователи','Наблюдение за людьми','профили, история, что они смотрят',1724,['lab'],{}],
-['adEff2','Деньги','Таргетированный баннер','+60% денег',2311,['feedSpd1'],{adEff:.6}],
-['labdata1','Лаборатория','Больше данных','лаборатория обрабатывает 75% журнала',3096,['labslot1'],{labData:1}],
-['classify','Алгоритм','Определение интересов','машина узнаёт интересы людей',4149,['users'],{}],
-['pers','Алгоритм','Персонализация','каждая лента подбирает пост под конкретного человека',5560,['classify'],{}],
-['reach3','Ленты','Охват ×3,4','ещё ×1,5 зрителей',7450,['pers'],{reach:1}],
-['labacc1','Лаборатория','Точные исследования','меньше ошибок',9983,['labdata1'],{labAcc:1}],
-['cf','Алгоритм','Похожие пользователи','персонализация по общим лайкам',13378,['pers'],{}],
-['feedSpd2','Ленты','Сверхбыстрые ленты','ещё +100% скорости',17926,['reach3'],{feedSpd:1}],
-['fmtPref','Алгоритм','Предпочтения форматов','учитывать, что человек досматривает',24021,['cf'],{}],
-['aud4','Ленты','Ещё 5 лент','+5 мест',32188,['classify'],{audCap:5}],
-['adEff3','Деньги','Своя рекламная сеть','+100% денег',43132,['fmtPref'],{adEff:1}],
-['autoRes','Автоисследование','Автоисследование','машина сама ищет новые категории',57796,['fmtPref','labacc1'],{}],
-['autoacc1','Автоисследование','Связи слов','машина группирует слова по смыслу',77447,['autoRes'],{autoAcc:1}],
-['autospd1','Автоисследование','Быстрый поиск','исследования чаще',103779,['autoRes'],{autoSpeed:1}],
-['autoacc2','Автоисследование','Чистые гипотезы','без лишних слов',139064,['autoacc1'],{autoAcc:1}],
-['reach4','Ленты','Охват ×5','ещё ×1,5',186346,['autoacc1'],{reach:1}],
-['autoFeed','Автоисследование','Ленты сами','найденная машиной категория сразу становится лентой',249703,['autoacc2'],{}],
-['autoacc3','Автоисследование','Редкие интересы','машина замечает редкие темы',334602,['autoFeed'],{autoAcc:1}],
-['autonomy','Автоисследование','Автономная система','всё работает само: ×2 ко всем лентам',448367,['autoacc3','reach4'],{feedSpd:1}]];
-TECH8=T8.map(([id,b,n,d,p,req,ef],i)=>({id,b,n,d,p,req,ef,i}));
-function buy9(id){if(id=='srv'){const c=srvPrice();if(S.m<c)return false;S.m-=c;S.srvLvl++;S.nb++;return true}const ok=buy8(id);if(ok&&id=='feed1'&&!S.feeds.length)addFeed('Все',null);return ok}
-GOALS=[['c1','Продвинь первый пост',()=>(S.nClick||0)>0],['f1','Купи ленту «Все»',()=>S.feeds.length>0],['l10','Подними ленту до 10 уровня',()=>S.feeds.some(F=>F.lvl>=10)],['pick','Купи «Отбор постов»',()=>has('pick')],
- ['f2','Сделай вторую ленту из тех, кто залип',()=>S.feeds.length>=2],['w5','Собери 5 слов в словарь',()=>Object.keys(S.dict.words).length>=5],['flt','Поставь ленте фильтр',()=>S.feeds.some(F=>F.filter&&F.filter.length)],
- ['ps1','Доход $1 в секунду',()=>perSec()>=1],['l25','Лента 25 уровня',()=>S.feeds.some(F=>F.lvl>=25)],['ps10','Доход $10 в секунду',()=>perSec()>=10],['lab','Открой лабораторию',()=>has('lab')],['cat1','Подтверди категорию',()=>S.lab.cats.length>0],
- ['cfeed','Сделай ленту из категории',()=>S.feeds.some(F=>{const A=S.aud.find(a=>a.id==F.aud);return A&&A.auto!=null})],['ps100','Доход $100 в секунду',()=>perSec()>=100],['l50','Лента 50 уровня',()=>S.feeds.some(F=>F.lvl>=50)],
- ['pers','Открой персонализацию',()=>has('pers')],['ps1k','Доход $1 000 в секунду',()=>perSec()>=1000],['auto','Открой автоисследование',()=>has('autoRes')],['autoF','Получи категорию, найденную машиной',()=>S.auto.found>0],['l100','Лента 100 уровня',()=>S.feeds.some(F=>F.lvl>=100)],['autonomy','Запусти автономную систему',()=>has('autonomy')]];
-// персонализация в лентах: при отборе прогноз считается по конкретному зрителю
-const _cand=candidate;
-// ленты из найденных машиной категорий
-const _labFinish=labFinish;labFinish=function(R){_labFinish(R);const h=S.lab.hyp.find(x=>x.id==R.hid);if(h&&h.auto&&h.res&&(h.res.k=='found'||h.res.k=='partial')&&has('autoFeed')&&S.feeds.length<feedCap()){const C=S.lab.cats.find(c=>c.id==h.res.cat);if(C)catFeed(C)}};
-function catFeed(C){if(S.feeds.length>=feedCap())return 'нет места для ленты';if(S.aud.some(a=>a.auto==C.t&&S.feeds.some(F=>F.aud==a.id)))return 'такая лента уже есть';const A={id:S.audN++,name:C.name,auto:C.t,st:[0,0],born:S.t};S.aud.push(A);addFeed(C.name,A.id);return ''}
-
-// ===================== ЛЕНТА.EXE v8 — ИНТЕРФЕЙС ЛентаОС =====================
+function step(){if(S.paused)return;S.t++;
+ // авторы пишут посты
+ const rate=.5+active()/150;for(let i=0;i<rate;i++)if(Math.random()<rate/Math.ceil(rate)&&S.U.length){const au=pk(S.U);if(!au.gone)mkPost(au)}
+ eventsTick();newPostsToQueue();serverTick();
+ // лента формируется с задержкой при перегрузке
+ if(!S.queue.feed||S.t%Math.min(5,1+Math.floor(S.queue.feed/20))==0)rerank();
+ const r=tickUsers();const R=rep();const att=r.att/60*R*S.perf;const ads=att*adRate();const an=analyticsIncome()/TICK_DAY;S.m+=ads+an;S.totals.att+=att;S.totals.ads+=ads;S.totals.an+=an;
+ S.day.att=(S.day.att||0)+att;S.day.views=(S.day.views||0)+r.views;S.day.inc=(S.day.inc||0)+ads+an;S.incNow=(S.incNow||0)*.9+(ads+an)*60*.1;
+ ruleEffectTick();
+ if(S.t%TICK_DAY==0)endDay();goalsTick()}
+function init10(){for(let i=0;i<100;i++)addUser();for(let i=0;i<60;i++){const p=mkPost(pk(S.U));p.born=-Math.floor(Math.random()*20)}S.queue.posts=0;rerank()}
+// ===================== ЛЕНТА.EXE v10 — ПРАВИЛА, ПОИСК, СОБЫТИЯ, МАГАЗИН =====================
+const eff=k=>{let s=0;for(const it of SHOP){if(it.lv){const n=lvl(it.id);if(n&&it.ef[k])s+=it.ef[k]*n}else if(has(it.id)&&it.ef&&it.ef[k])s+=it.ef[k]}return s};
+// ---------- условия правил ----------
+// k: word, views, likes, coms, shares, cat, tone, emo, age, media, len, comtone, comact
+const COND={word:{n:'содержит слово',need:null,val:'text'},views:{n:'просмотров',need:'c_views',val:'num'},likes:{n:'лайков',need:'m_likes',val:'num'},coms:{n:'комментариев',need:'m_coms',val:'num'},
+ shares:{n:'репостов',need:'m_shares',val:'num'},cat:{n:'тематика',need:'m_cats',val:'cat'},tone:{n:'тональность',need:'m_tone',val:'tone'},emo:{n:'эмоциональность',need:'m_emo',val:'num'},
+ age:{n:'возраст публикации (дней)',need:'c_age',val:'num'},media:{n:'есть фото или видео',need:'s_media',val:'none'},len:{n:'длина текста (знаков)',need:'s_len',val:'num'},
+ comtone:{n:'доля злых комментариев (%)',need:'c_comtone',val:'num'},comact:{n:'комментариев за день',need:'c_comact',val:'num'}};
+function condOk(c,p){let r;switch(c.k){case 'word':{const w=normW(c.v||'');const l=lemma(w);r=p.words.includes(w)||p.lem.includes(l);break}
+ case 'views':r=cmp(p.views*rep(),c);break;case 'likes':r=cmp(p.likes*rep(),c);break;case 'coms':r=cmp(p.coms*rep(),c);break;case 'shares':r=cmp(p.shares*rep(),c);break;
+ case 'cat':r=p.cats.includes(+c.v);break;case 'tone':r=p.tone==+c.v;break;case 'emo':r=cmp(p.emo,c);break;case 'age':r=cmp((S.t-p.born)/TICK_DAY,c);break;case 'media':r=!!p.media;break;case 'len':r=cmp(p.len,c);break;
+ case 'comtone':{const n=p.comments.length;r=n>=3&&cmp(p.comments.filter(x=>x.tone==0).length/n*100,c);break}case 'comact':r=cmp(p.coms*rep()/Math.max(1,(S.t-p.born)/TICK_DAY),c);break;default:r=false}
+ return c.not?!r:r}
+const cmp=(x,c)=>c.op=='<'?x<+c.v:x>+c.v;
+function ruleOk(R,p){if(!R.conds.length)return false;return R.join=='or'?R.conds.some(c=>condOk(c,p)):R.conds.every(c=>condOk(c,p))}
+const ACTN={1:'повысить приоритет (слабо)',2:'повысить приоритет',5:'максимальный приоритет',limit:'ограничить распространение'};
+function condTxt(c){const C=COND[c.k];let v=c.v;if(c.k=='cat')v=CATS[+c.v];if(c.k=='tone')v=TONE[+c.v];return (c.not?'НЕ ':'')+(c.k=='word'?'содержит «'+v+'»':C.val=='none'?C.n:C.val=='num'?C.n+' '+(c.op||'>')+' '+v:C.n+' — '+v)}
+const ruleTxt=R=>'ЕСЛИ '+R.conds.map(condTxt).join(R.join=='or'?' ИЛИ ':' И ')+(R.aud?' [для тех, у кого интерес «'+CATS[R.aud.cat]+'» ≥ '+R.aud.min+']':'')+' → '+ACTN[R.act];
+// ---------- пересчёт ----------
+let RCUR=0;
+function requeue(){S.queue.rules=S.P.length;RCUR=0;S.recalcTotal=S.P.length;S.recalcDone=0}
+function rulesWork(n){const act=S.rules.filter(r=>r.on);for(let i=0;i<n;i++){if(!S.P.length)return;RCUR=RCUR%S.P.length;const p=S.P[RCUR++];applyRules(p,act);S.recalcDone=(S.recalcDone||0)+1}}
+function applyRules(p,act){let b=0;const log=[];p.audB=[];p.rc={};let lim=false;
+ for(const R of act){if(!ruleOk(R,p))continue;R.hits=(R.hits||0)+1;const met=R.conds.filter(c=>condOk(c,p)).map(condTxt);
+  if(R.act=='limit'){lim=true;p.rc[R.id]=-1}else if(R.aud){p.audB.push({cat:R.aud.cat,min:R.aud.min,v:+R.act,r:R.id})}else{b+=+R.act;p.rc[R.id]=+R.act}
+  log.push({r:R.id,met,act:ACTN[R.act],t:S.t})}
+ p.boost=lim?-8:b;p.ruleLim=lim;if(log.length){p.log=log.concat(p.log.filter(x=>!log.some(y=>y.r==x.r))).slice(0,12)}else p.log=p.log.filter(x=>S.rules.some(r=>r.id==x.r&&r.on));p.ruleOk=true}
+function audBoost(u,p){if(!p.audB||!p.audB.length)return 0;let s=0;for(const a of p.audB)if(u.it[a.cat]>=a.min)s+=a.v;return s}
+// новые посты: сразу в очередь правил
+function newPostsToQueue(){const fresh=S.P.filter(p=>!p.ruleOk);if(!S.rules.some(r=>r.on)){fresh.forEach(p=>p.ruleOk=true);return}fresh.forEach(p=>{applyRules(p,S.rules.filter(r=>r.on))})}
+// эффект правил: доля внимания поста, которую дала надбавка правила, и потерянное внимание ограниченных постов
+function ruleEffectTick(){if(!S.rules.length)return;let avgAtt=0,n=0;for(const p of S.P){if(!p.boost&&!p.pri){avgAtt+=p.att/Math.max(1,(S.t-p.born));n++}}avgAtt=n?avgAtt/n:0;
+ for(const p of S.P){if(!p.rc)continue;const now=p.att-(p.attPrev||0);p.attPrev=p.att;for(const id in p.rc){const R=S.rules.find(r=>r.id==+id);if(!R)continue;const v=p.rc[id];
+  if(v>0){const sc=Math.max(.5,score(p));R.effD=(R.effD||0)+now*rep()/60*(v/sc)}else R.effD=(R.effD||0)-avgAtt*rep()/60}}}
+// ---------- ручное вмешательство ----------
+function intervene(p,mode){p.pri=mode=='max'?5:0;p.blocked=mode=='block';if(mode=='none'){S.iv=S.iv.filter(id=>id!=p.id)}else if(!S.iv.includes(p.id))S.iv.unshift(p.id);rerank()}
+// ---------- поиск ----------
+function search(q,o={}){const ws=q.trim().split(/\s+/).map(normW).filter(Boolean);const L=o.arch?S.P.concat(S.arch):S.P;
+ let R=L.filter(p=>ws.every(w=>p.words.includes(w)||p.lem.includes(lemma(w))));
+ if(o.media)R=R.filter(p=>o.media=='any'?p.media:o.media=='none'?!p.media:p.media==o.media);if(o.len)R=R.filter(p=>o.len=='s'?p.len<80:o.len=='m'?p.len>=80&&p.len<200:p.len>=200);
+ if(o.cat!=null&&o.cat!=='')R=R.filter(p=>p.cats.includes(+o.cat));if(o.tone!=null&&o.tone!=='')R=R.filter(p=>p.tone==+o.tone);if(o.emo)R=R.filter(p=>o.emo=='hi'?p.emo>=60:p.emo<40);
+ const key={date:p=>p.born,views:p=>p.views,likes:p=>p.likes,coms:p=>p.coms,shares:p=>p.shares,reach:p=>p.views}[o.sort||'date'];return R.sort((a,b)=>key(b)-key(a))}
+// ---------- события и новости ----------
+const EVT=[
+ {k:'prices',kw:['цены','инфляция','зарплата'],t:15,dur:8,tone:0,next:'protest',head:['Цены на хлеб взлетели за ночь: покупатели в ярости','Инфляция съедает зарплаты: «Сколько можно терпеть?»'],posts:['Цены на хлеб выросли вдвое. Как жить?','Зарплата та же, а цены каждую неделю выше','Инфляция: я больше не могу покупать мясо']},
+ {k:'protest',kw:['митинг','площадь','требуем'],t:14,dur:5,tone:0,next:'scandal',head:['Недовольные ценами вышли на площадь','Митинг у мэрии: «Требуем ответа!»'],posts:['Все на площадь в субботу! Требуем снизить цены','Митинг у мэрии собрал тысячи','Я был на митинге. Нас не слышат']},
+ {k:'scandal',kw:['чиновник','взятки','мэрия'],t:14,dur:6,tone:0,head:['Скандал: чиновник мэрии купил третью яхту','Взятки в мэрии: журналисты нашли документы'],posts:['Чиновник мэрии и его яхты — читайте до конца','Взятки в мэрии: почему все молчат?','Мэрия опять оправдывается']},
+ {k:'fire',kw:['пожар','гаражи'],t:40,dur:3,tone:0,head:['Крупный пожар в гаражах Промзоны'],posts:['Пожар в гаражах! Дым видно из окна','Пожарные работают уже три часа','Кто-нибудь знает, все целы после пожара?']},
+ {k:'match',kw:['матч','футбол','победа'],t:3,dur:4,tone:2,head:['Сборная Вальдии вышла в финал!'],posts:['Какой матч! Победа на последней минуте','Весь город празднует победу','Футбол — это жизнь']},
+ {k:'virus',kw:['вирус','больница','маски'],t:10,dur:10,tone:0,next:'scandal',head:['В городе вспышка неизвестного вируса','Больницы переполнены: врачи просят носить маски'],posts:['Вирус в городе, больница забита','Маски снова в аптеках по тройной цене','Врачи просят не паниковать из-за вируса']},
+ {k:'phone',kw:['смартфон','презентация'],t:8,dur:5,tone:2,head:['Новый смартфон «Вальдия-Х» побил рекорды продаж'],posts:['Купил новый смартфон — камера огонь','Презентация смартфона: обзор','Стоит ли брать новый смартфон?']},
+ {k:'cat',kw:['кот','котик'],t:23,dur:3,tone:2,head:['Кот-пианист покорил соцсети'],posts:['Этот кот играет на пианино 😂','Кот-пианист — лучшее видео года','Хочу такого кота']}];
+function eventsTick(){if(S.t%TICK_DAY!=5)return;for(const E of S.ev){const D=EVT.find(x=>x.k==E.k);const n=2+Math.floor(Math.random()*4)+Math.floor(active()/400);
+  for(let i=0;i<n;i++){const p=mkPost(pk(S.U),{t:D.t,txt:pk(D.posts),tone:D.tone,emo:60+Math.random()*40,ev:E.id});p.cats=[...new Set(p.cats.concat(T2C[D.t]))]}}}
+function eventsDay(){const t=dayNo();
+ for(const E of S.ev.slice()){const D=EVT.find(x=>x.k==E.k);const posts=S.P.filter(p=>p.ev==E.id);const sup=posts.length?posts.filter(p=>p.blocked||p.ruleLim).length/posts.length:0;
+  if(sup>=.6&&t-E.start>=1){endEvent(E,true);continue}if(t-E.start>=D.dur)endEvent(E,false)}
+ if(S.ev.length<2&&Math.random()<.18){const D=pk(EVT.filter(x=>!['protest','scandal'].includes(x.k)&&!S.ev.some(e=>e.k==x.k)));if(D)startEvent(D)}}
+function startEvent(D){const E={id:'e'+(S.evN=(S.evN||0)+1),k:D.k,start:dayNo()};S.ev.push(E);S.news.unshift({id:E.id,txt:pk(D.head),src:pk(['«Вечерний вестник»','«Новости Вальдии»','«Город онлайн»','Telegram «Инсайдер»']),t:S.t});S.news.length=Math.min(30,S.news.length)}
+function endEvent(E,sup){S.ev=S.ev.filter(x=>x!==E);S.news=S.news.filter(n=>n.id!=E.id);const D=EVT.find(x=>x.k==E.k);if(!sup&&D.next){const N=EVT.find(x=>x.k==D.next);if(N&&!S.ev.some(e=>e.k==N.k))startEvent(N)}if(sup)S.suppressed=(S.suppressed||0)+1}
+// ---------- магазин ----------
+// [id, программа, название, описание, цена, требование] — все новые функции открываются в первые ~30 минут
+const SHOP_RAW=[
+['rules','Конструктор','Конструктор алгоритма','правила «ЕСЛИ содержит слово → повысить приоритет / ограничить»',10,null],
+['c_views','Конструктор','Условие: просмотры','«просмотров больше / меньше …»',18,'rules'],
+['sort_views','Поиск','Сортировка результатов','по просмотрам, лайкам, охвату',20,null],
+['m_time','Статистика','Время в соцсети и возвращения','ключевые показатели эффективности ленты',25,null],
+['r_effect','Конструктор','Эффект правила','у каждого правила — минуты внимания за 7 дней',30,'rules'],
+['m_likes','Статистика','Показатель: лайки','лайки у всех постов, условие в правилах',35,'m_time'],
+['comments','Комментарии','Окно комментариев','читай, что пишут под постами',40,null],
+['c_and','Конструктор','Несколько условий (И)','до трёх условий в правиле',45,'rules'],
+['m_flow','Статистика','Приход и отток','сколько пришло и ушло за день и почему',55,'m_time'],
+['u_profile','Пользователи','Возраст и регион','новые поля в профиле',60,null],
+['m_coms','Статистика','Показатель: комментарии','комментарии у всех постов',65,'comments'],
+['feed_pause','Лента','Пауза под курсором','лента останавливается, когда наводишь мышь',70,null],
+['c_or','Конструктор','Связка ИЛИ','условия через ИЛИ',80,'c_and'],
+['a_str','Конструктор','Сила приоритета','слабо / средне / максимум',90,'rules'],
+['r_log','Конструктор','Журнал срабатываний','у поста видно, какое правило сработало и почему',100,'r_effect'],
+['s_media','Поиск','Фильтр: фото и видео','и условие «есть медиа»',110,null],
+['m_shares','Статистика','Показатель: репосты','репосты у всех постов',120,'m_likes'],
+['u_hist','Пользователи','История просмотров','последние 100 публикаций пользователя',130,'u_profile'],
+['r_folders','Конструктор','Папки правил','группируй правила',140,'c_and'],
+['s_len','Поиск','Фильтр: длина','и условие по длине',150,'s_media'],
+['m_cats','Статистика','Тематики','тематики у постов, фильтр поиска и условие',170,'m_likes'],
+['c_age','Конструктор','Условие: возраст публикации','«старше N дней»',185,'c_views'],
+['c_not','Конструктор','Исключения (НЕ)','«содержит „мэрия“, но НЕ „каток“»',200,'c_or'],
+['m_tone','Статистика','Тональность','тональность постов, фильтр и условие',220,'m_cats'],
+['u_stats','Пользователи','Статистика пользователя','время в соцсети, возвращения, активность',240,'u_hist'],
+['a_restore','Конструктор','Восстановление из архива','правило может возвращать архивные посты',260,'c_age'],
+['srv_fc','Серверы','Прогноз расходов','на 30 дней вперёд',280,null],
+['m_emo','Статистика','Эмоциональность','эмоциональность постов, фильтр и условие',300,'m_tone'],
+['s_combo','Поиск','Комбинированные фильтры','несколько фильтров сразу',320,'m_cats'],
+['aud_stats','Статистика','Аудитория: возраст и регионы','распределения пользователей',340,'u_profile'],
+['u_filter','Пользователи','Фильтр каталога','по возрасту и региону',360,'aud_stats'],
+['feed_compact','Лента','Компактная лента','вдвое больше постов на экране',380,'feed_pause'],
+['analytics','Аналитика','Продажа аналитики','собирай возраст и регионы — система продаёт данные',400,'aud_stats'],
+['c_comtone','Конструктор','Условие: злые комментарии','доля злых комментариев',430,'m_coms'],
+['c_comact','Конструктор','Условие: активность обсуждения','комментариев за день',460,'m_coms'],
+['u_int','Пользователи','Интересы пользователя','сила интереса по категориям',500,'u_stats'],
+['d_int','Аналитика','Сбор интересов','продаётся дороже',540,'analytics'],
+['aud_int','Статистика','Аудитория: интересы','какие интересы у платформы',580,'u_int'],
+['d_beh','Аналитика','Сбор поведения','ещё дороже',620,'d_int'],
+['u_beh','Пользователи','Поведенческий профиль','склонности: лайкать, спорить, пролистывать',660,'u_int'],
+['c_aud','Конструктор','Правила по аудитории','«показывать тем, у кого интерес к спорту ≥ 50» — персонализация',720,'u_int'],
+['d_pref','Аналитика','Сбор предпочтений','самые дорогие данные',780,'d_beh'],
+['u_filter2','Пользователи','Фильтр по интересам и поведению','поиск «кто любит спорт и спорит»',840,'u_beh'],
+['stat_cmp','Статистика','Сравнение недель','неделя к неделе',900,'aud_int'],
+['mark_iv','Лента','Метки вмешательств','в ленте видно, на какие посты ты повлиял',1000,'r_log']];
+// многоуровневые: [id, программа, название, описание, базовая цена, множитель цены, эффект за уровень]
+const SHOP_LV=[
+['power','Серверы','Мощность серверов','+20% к мощности за уровень',60,1.45,{}],
+['ads','Реклама','Рекламная сеть','+25% к ставке рекламы за уровень',150,1.6,{ads:.25}],
+['growth','Рост','Рекомендации друзьям','+20% к притоку новых людей за уровень',200,1.65,{growth:.2}],
+['dataQ','Аналитика','Чистка данных','+30% к цене данных за уровень',500,1.7,{dataQ:.3}],
+['elec','Серверы','Энергоэффективность','−8% к расходу электричества',400,1.8,{elecSave:.08}],
+['water','Серверы','Замкнутое охлаждение','−8% к расходу воды',400,1.8,{waterSave:.08}],
+['ruleOpt','Серверы','Оптимизатор правил','−10% нагрузки от правил',800,1.9,{ruleOpt:.1}]];
+const SHOP=SHOP_RAW.map(([id,b,n,d,p,req])=>({id,b,n,d,p:p<=30?p:Math.round(p*.2/5)*5,req,ef:{}})).concat(SHOP_LV.map(([id,b,n,d,p,mul,ef])=>({id,b,n,d,p,mul,ef,lv:true})));
+const priceOf=it=>it.lv?Math.round(it.p*Math.pow(it.mul,lvl(it.id))):it.p;
+const shopOk=it=>it.lv?(it.id=='power'||has('rules'))&&(it.id!='dataQ'||has('analytics')):!has(it.id)&&(!it.req||has(it.req));
+function buy(id){const it=SHOP.find(x=>x.id==id);if(!it||!shopOk(it))return false;const c=priceOf(it);if(S.m<c)return false;S.m-=c;if(it.lv)S.lv[id]=lvl(id)+1;else S.f[id]=1;
+ if(id=='analytics'){S.data.age=true;S.data.reg=true}return true}
+// ---------- вехи ----------
+const GOALS=[['u150','150 пользователей',()=>active()*rep()>=150],['r1','Первое правило',()=>S.rules.length>0],['e500','Правило с эффектом +500 мин за неделю',()=>S.rules.some(r=>r.eff7.reduce((a,b)=>a+b,0)>=500)],
+ ['u500','500 пользователей',()=>active()*rep()>=500],['sup','Подави событие до его конца',()=>(S.suppressed||0)>0],['u2k','2 000 пользователей',()=>active()*rep()>=2000],['t30','Время в соцсети 30 мин в день',()=>{const d=S.days[S.days.length-1];return d&&d.timeAvg>=30}],
+ ['u10k','10 000 пользователей',()=>active()*rep()>=1e4],['an1k','Доход аналитики $1 000 в день',()=>analyticsIncome()>=1000],['u50k','50 000 пользователей',()=>active()*rep()>=5e4],['u100k','100 000 пользователей',()=>active()*rep()>=1e5]];
+function goalsTick(){if(S.t%5)return;for(const[id,n,ok]of GOALS)if(!S.goals[id]&&ok()){S.goals[id]=S.t;if(typeof toast=='function')toast('🎯 Веха: '+n)}}
+// ===================== ЛЕНТА.EXE v10 — ИНТЕРФЕЙС =====================
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const avImg=(i,px=36)=>'<img class="avi" src="'+IMGA[i%NAV]+'" width="'+px+'" height="'+px+'" alt="">';
@@ -647,74 +463,109 @@ const B=(t,a,ex='')=>'<button class="b95" data-a="'+a+'" '+ex+'>'+t+'</button>';
 const opt=(arr,sel)=>arr.map(([v,n])=>'<option value="'+v+'"'+(String(v)===String(sel)?' selected':'')+'>'+n+'</option>').join('');
 const bar=(v,cls='')=>'<div class="prog '+cls+'"><i style="width:'+clamp(v*100,0,100)+'%"></i></div>';
 function toast(t,ms){const e=$('toast');if(!e)return;const d=document.createElement('div');d.className='w95 tst';d.innerHTML='<div class="tb"><span>ЛентаОС</span></div><div class="bd">'+t+'</div>';e.prepend(d);setTimeout(()=>d.remove(),ms||5000);while(e.children.length>4)e.lastChild.remove()}
-function mail(t){S.mails.unshift({t,read:false});S.mails.length=Math.min(40,S.mails.length);icons()}
-const FICON=['📝','🖼','🖼🖼','🎬','🎞','🔗','📊','😂','📈','📢'];
-const last=(k,n=6)=>S.statH.slice(-n).reduce((s,x)=>s+(x[k]||0),0);
+function mail(t){S.mails.unshift({t,read:false});S.mails.length=Math.min(40,S.mails.length)}
 const fc=n=>n<1e4?String(Math.round(n)):f(n);
-const tmin=x=>x==null?'—':x<60?Math.round(x)+' с':Math.floor(x/60)+' мин '+Math.round(x%60)+' с';
-const sec=x=>(x||0).toFixed(1)+' с';
-let LVLM=1,FEEDMODE='new',DR={k:'fmt',v:0,k2:'',v2:'',k3:'',v3:'',join:'and',act:'a0'},WSEL=null,QS='';
-function postHTML(p,mode){const dict=has('dict');const ret=p.views?p.dwT/p.views:0;
- const txt=p.txt.split(' ').map(w=>{const n=normW(w);if(!dict||n.length<2)return esc(w);const k=has('forms')?(lemmaOf(n)||n):n;return '<span class="wd'+(S.dict.words[k]?' in':'')+'" data-w="'+esc(n)+'">'+esc(w)+'</span>'}).join(' ');
- return '<article class="post'+(p.pri>0?' upd':p.pri<0?' dnd':'')+'"><div class="av">'+avImg(p.av,32)+'</div><div class="pc"><div class="meta"><b>'+esc(p.auN)+'</b> <span class="tag">'+FICON[p.fmt]+' '+FORMATS[p.fmt]+(p.dur?' · '+p.dur+' с':'')+(p.imgs>1?' · '+p.imgs+' фото':'')+(p.fmt==0&&p.len>260?' · '+f(p.len)+' зн.':'')+'</span></div>'+
- '<div class="txt">'+txt+(p.len>p.txt.length+20?' <span class="lbl">…ещё '+f(p.len-p.txt.length)+' знаков</span>':'')+'</div>'+
- (p.ph!=null&&mode!='sent'?'<div class="pimg'+(p.fmt==3||p.fmt==4?' vid':'')+'"><img class="ph" loading="lazy" src="'+IMGP[p.ph%PHOTOS]+'" alt=""></div>':'')+(p.fmt==6?'<div class="lbl">○ Да &nbsp; ○ Нет &nbsp; ○ Не знаю</div>':'')+(p.fmt==5?'<div class="lnk">🔗 Читать полностью → '+esc(TOPICS8[p.t][0].toLowerCase())+'.ru</div>':'')+
- '<div class="meta">👁 '+fc(p.views*rep())+' · ⏱ '+(p.views?sec(ret):'—')+(has('mReact')&&p.views?' · ♥ '+p.likes+' · 💬 '+p.coms+' · ⟲ '+p.shares+' · 🔖 '+p.saves:'')+(has('mQuit')&&p.views?' · 🚪 '+p.quits:'')+(p.rp?' · <span class="tag">правило '+(p.rp>0?'+':'')+p.rp+'</span>':'')+'</div></div>'+
- (mode=='in'?'<div class="sendrow"><b class="pred">прогноз ≈'+sec(p.pred)+' → +$'+f(p.pred*clickReach()*rate())+'</b> '+B('▲ Продвинуть','click','data-p="'+p.id+'"')+'</div>':'')+
- (mode=='sent'?'<div class="sentx">'+sentInfo(p)+'</div>':'')+'</article>'}
-function sentInfo(p){const lk=lookalikeN(p);return '<div class="lbl">смотрели в среднем '+sec(p.clickRet)+(p.clickRet>p.pred?' — <span class="up">лучше прогноза</span>':'')+'</div>'+(has('split')?B('Сделать ленту из тех, кто залип ('+fc(lk*rep())+')','mkfeed','data-p="'+p.id+'"'+(lk>=5&&S.feeds.length<feedCap()?'':' disabled')):'')}
-function lookalikeN(p){if(p._lkT!=S.t){p._lk=lookalike(p).length;p._lkT=S.t}return p._lk}
-const condList=()=>{const L=['fmt','retGt','retLt','retAbove','retBelow','viewsGt','viewsLt'];if(has('dict'))L.push('word');if(has('groups'))L.push('groupAny','groupAll');if(S.lab.cats.length)L.push('cat');if(has('mReact'))L.push('likesGt','comsGt');if(has('mQuit'))L.push('quitsGt');return L};
-function condVal(k,v,key){if(k=='fmt')return '<select data-dr="'+key+'">'+opt(FORMATS.map((x,i)=>[i,x]),v)+'</select>';if(k=='word')return '<select data-dr="'+key+'">'+opt(Object.keys(S.dict.words).sort().map(w=>[w,w]),v)+'</select>';if(k=='groupAny'||k=='groupAll')return '<select data-dr="'+key+'">'+opt(S.dict.groups.map(g=>[g.id,g.name]),v)+'</select>';
- if(k=='cat')return '<select data-dr="'+key+'">'+opt(S.lab.cats.map(c=>[c.id,c.name]),v)+'</select>';if(k=='retAbove'||k=='retBelow')return '';return '<input data-dr="'+key+'" type="number" value="'+(v===''?10:v)+'" style="width:60px">'}
-const WIN={
- feed:{t:'Входящие',i:'lenta',w:520,h:640,live:1,r(){
-  return '<div class="row"><b>Входящие</b><span class="lbl">▲ — показать пост '+clickReach()+' людям. Прогноз — сколько секунд его будут смотреть</span></div><div class="feedbox">'+(S.inbox.length?S.inbox.slice().reverse().map(p=>postHTML(p,'in')).join(''):'<div class="lbl" style="padding:8px">Новых постов пока нет…</div>')+
-  (S.recent.length?'<div class="sep">Продвинутые</div>'+S.recent.map(p=>postHTML(p,'sent')).join(''):'')+'</div>'}},
- feeds:{t:'Ленты',i:'aud',w:520,h:600,live:1,r(){if(!S.feeds.length)return '<div class="lbl">Лента — генератор: сама показывает посты людям и приносит деньги. Купи первую в «Развитии».</div>';
-  return '<div class="row"><b>Лент: '+S.feeds.length+' / '+feedCap()+'</b>'+B(LVLM==10?'покупка ×10':'покупка ×1','lvlmode','data-m="'+(LVLM==10?1:10)+'"')+'</div>'+S.feeds.map(F=>{const M=feedMembers(F);const nx=MILES.find(x=>x>F.lvl);const fat=F.aud==null?audFatigue(S.aud[0]):audFatigue(S.aud.find(a=>a.id==F.aud)||S.aud[0]);
-   let price=0;for(let k=0;k<LVLM;k++)price+=Math.round(feedBase(F.i)*Math.pow(1.12,F.lvl+k)*100)/100;
-   return '<div class="card feedc'+(S.t-F.flash<1?' flash':'')+'"><div class="row"><b>'+esc(F.name)+'</b><span class="lbl">ур. '+F.lvl+(nx?' · до ×2: '+(nx-F.lvl):'')+'</span><b class="up">$'+f(feedRate(F))+'/с</b></div>'+bar(F.prog||0)+
-   '<div class="lbl">'+fc(M.length*rep())+' человек · удержание '+(F.ret?sec(F.ret):'—')+' · цикл '+feedCycle(F).toFixed(2)+' с · '+F.lvl+' пост(ов) за цикл</div><div class="row"><span class="lbl">усталость</span>'+bar(fat,fat>.5?'red':'')+'</div>'+
-   (has('filter')?'<div class="lbl">Фильтр: '+(F.filter.length?F.filter.map(w=>'<span class="chip">'+esc(w)+' <a data-a="funf" data-f="'+F.id+'" data-w="'+esc(w)+'">×</a></span>').join(''):'нет — берёт любые посты')+(WSEL?' '+B('+ «'+esc(WSEL)+'»','fadd','data-f="'+F.id+'"'):' <span class="lbl">(выдели слово в «Словаре»)</span>')+(has('groups')&&S.dict.groups.length?' <select data-fg="'+F.id+'">'+opt([['','+ группа…']].concat(S.dict.groups.map(g=>[g.id,g.name])),'')+'</select>':'')+'</div>':'')+
-   '<div class="row">'+B('Уровень +'+LVLM+' — $'+f(price),'lvl','data-f="'+F.id+'"'+(S.m>=price?'':' disabled'))+(F.id>1?B('✎','fren','data-f="'+F.id+'"'):'')+'</div></div>'}).join('')}},
- net:{t:'Платформа',i:'srv',w:330,h:330,live:1,r(){const g=nextGoal();return '<div class="bigm">$'+f(S.m)+'</div><div class="big2">+$'+f(perSec())+' в секунду</div><div class="kv"><span>Среднее удержание</span><b>'+sec(S.avgRet)+'</b><span>Пользователей</span><b>'+fc(S.regTotal)+' / '+fc(srvCap())+'</b><span>Клики принесли</span><b>$'+f(S.clickEarn||0)+'</b></div>'+B('Сервер: потолок пользователей ×2 — $'+f(srvPrice()),'buy','data-id="srv"'+(S.m>=srvPrice()?'':' disabled'))+(g?'<fieldset><legend>Цель</legend>🎯 '+g[1]+'</fieldset>':'')}},
- shop:{t:'Развитие',i:'tree',w:470,h:560,live:1,r(){const av=TECH8.filter(t=>t.id!='srv'&&!has(t.id)&&techOk8(t));const nx=TECH8.filter(t=>t.id!='srv'&&!has(t.id)&&!techOk8(t)&&t.req.every(r=>has(r)||techOk8(TECH8.find(x=>x.id==r)))).slice(0,4);
-  return '<fieldset><legend>Доступно</legend>'+(av.map(t=>'<div class="node"><div><b>'+t.n+'</b> <span class="lbl">'+t.b+'</span><div class="lbl">'+t.d+'</div></div>'+B('$'+f(t.p),'buy','data-id="'+t.id+'"'+(S.m>=t.p?'':' disabled'))+'</div>').join('')||'<span class="lbl">Всё куплено</span>')+'</fieldset>'+
-  (nx.length?'<fieldset class="lockera"><legend>Дальше</legend>'+nx.map(t=>'<div class="lbl">🔒 '+t.n+' — нужно: '+t.req.filter(r=>!has(r)).map(r=>TECH8.find(x=>x.id==r).n).join(', ')+'</div>').join('')+'</fieldset>':'')+'<div class="lbl">Куплено: '+S.nb+'</div>'}},
- dict:{t:'Словарь',i:'rules',w:520,h:480,need:'dict',live:0,r(){const W=Object.keys(S.dict.words).filter(w=>!QS||w.includes(QS)).sort();const G=S.dict.groups;
-  let h='<div class="row"><input id="qs" placeholder="поиск" value="'+esc(QS)+'"> <span class="lbl">'+Object.keys(S.dict.words).length+' / '+dictCap()+' слов'+(has('forms')?' · словоформы объединяются':'')+'</span></div><div class="wl">'+W.map(w=>'<span class="lw'+(WSEL==w?' on':'')+'" data-a="wsel" data-w="'+esc(w)+'">'+esc(w)+' <a data-a="wdel" data-w="'+esc(w)+'">×</a></span>').join('')+(W.length?'':'<span class="lbl">Открой пост в ленте и кликни по слову.</span>')+'</div>';
-  if(has('groups')){h+='<fieldset><legend>Группы ('+G.length+' / '+groupCap()+')</legend><div class="row"><input id="gname" placeholder="название группы"> '+B('Создать группу','gnew',G.length<groupCap()?'':'disabled')+'</div>'+G.map(g=>{const st=groupStats(g.words);return '<div class="card"><div class="row"><b>'+esc(g.name)+'</b><span class="lbl">постов сейчас: '+st.n+' · удержание '+(st.views?sec(st.ret):'—')+' · '+fc(st.fans)+' человек лайкали эти слова</span><span>'+B('✎','gren','data-g="'+g.id+'"')+B('×','gdel','data-g="'+g.id+'"')+'</span></div><div>'+g.words.map(w=>'<span class="chip">'+esc(w)+' <a data-a="gout" data-g="'+g.id+'" data-w="'+esc(w)+'">×</a></span>').join('')+(WSEL&&!g.words.includes(WSEL)?' '+B('+ «'+esc(WSEL)+'»','gin','data-g="'+g.id+'"'):'')+'</div></div>'}).join('')+'</fieldset><div class="lbl">Выдели слово в словаре — у групп появится кнопка «+». Правильные группы никто не подскажет: проверить их можно правилами или в лаборатории.</div>'}
-  return h}},
- lab:{t:'Лаборатория',i:'dash',w:600,h:540,need:'lab',live:1,r(){const L=S.lab;let h='<fieldset><legend>Отправить группу на исследование · слотов '+L.runs.filter(r=>!r.autoR).length+' / '+labSlots()+' · '+labTime()+' с</legend>'+(S.dict.groups.length?S.dict.groups.map(g=>'<div class="row"><span><b>'+esc(g.name)+'</b> <span class="lbl">'+g.words.join(', ')+'</span></span>'+B('Исследовать','lgo','data-g="'+g.id+'"'+(g.words.length>=2?'':' disabled'))+'</div>').join(''):'<span class="lbl">Сначала собери группу слов в словаре.</span>')+'</fieldset>';
-  h+='<fieldset><legend>Идут исследования</legend>'+(L.runs.length?L.runs.map(R=>'<div>'+(R.autoR?'🤖 ':'')+R.words.join(', ')+'</div>'+bar((S.t-R.start)/(R.end-R.start))+'<div class="lbl">осталось '+(R.end-S.t)+' с · анализ журнала просмотров</div>').join(''):'<span class="lbl">Нет.</span>')+'</fieldset>';
-  h+='<fieldset><legend>Результаты</legend>'+(L.hyp.filter(x=>x.res).slice(0,8).map(x=>{const r=x.res;return '<div class="news"><b>'+(x.auto?'🤖 ':'')+esc(x.name)+'</b> <span class="lbl">'+x.words.join(', ')+' · наблюдений '+r.obs+(r.ag?' · людей '+r.ag:'')+'</span><br>'+
-   ({found:'<b class="up">✓ Категория обнаружена: '+esc(cat(r.cat).name)+'</b>',partial:'<b class="up">◐ Частично подтверждена: «'+esc(cat(r.cat).name)+'» — связаны '+(r.core||[]).join(', ')+'</b>; не относятся: '+(r.rest||[]).join(', '),known:'Это уже известная категория «'+esc(cat(r.cat).name)+'» — изученность +15%',few:'<b class="dn">Недостаточно данных:</b> '+(r.why||[]).join('; ')+(r.unseen&&r.unseen.length?'. Ни разу не встретились: '+r.unseen.join(', '):''),no:'<b class="dn">Не подтверждена:</b> '+(r.why||[]).join('; ')}[r.k])+'</div>'}).join('')||'<span class="lbl">Пока ничего.</span>')+'</fieldset>';
-  return h+'<fieldset><legend>Категории</legend>'+(L.cats.length?L.cats.map(c=>'<div class="card"><b>'+esc(c.name)+'</b>'+(c.auto?' <span class="tag">найдена машиной</span>':'')+(S.aud.some(x=>x.auto==c.t)?' <span class="tag">есть лента</span>':' '+B('Сделать лентой','caud','data-id="'+c.id+'"'))+' <span class="lbl">изученность '+c.known+'% · слова: '+c.words.join(', ')+(has('classify')?' · людей с интересом: '+f(S.U.filter(u=>u.cls[c.id]>.6).length*rep()):'')+'</span></div>').join(''):'<span class="lbl">Аудитория существует, но ты её ещё не понимаешь.</span>')+'</fieldset>'}},
- users:{t:'Пользователи',i:'people',w:640,h:540,need:'users',live:1,r(){const L=S.U.filter(u=>u.on).slice(0,40);const u=S.sel&&byId(S.sel);
-  let h='<div class="ulist">'+L.map(x=>'<span class="lw'+(S.sel==x.id?' on':'')+'" data-a="usel" data-id="'+x.id+'">'+avImg(x.av,16)+' '+esc(x.n.split(' ')[0])+'</span>').join('')+'</div>';if(!u)return h+'<div class="lbl">Выбери человека онлайн.</div>';
-  h+='<div class="row">'+avImg(u.av,48)+'<span><b>'+esc(u.n)+'</b>, '+u.sex+', '+u.age+' лет · '+DIST8[u.d]+'<br>'+(u.on?'🟢 смотрит ленту'+(u.cur?': «'+esc((POOL.find(p=>p.id==u.cur)||{txt:''}).txt.slice(0,40))+'…»':''):'⚪ не в сети')+'</span></div>';
-  if(has('classify')&&S.lab.cats.length)h+='<div class="lbl">Интересы по оценке машины: '+S.lab.cats.map(c=>[c,u.cls[c.id]]).filter(x=>x[1]!=null).sort((a,b)=>b[1]-a[1]).map(([c,v])=>c.name+' '+Math.round(v*100)+'%').join(', ')+'</div>';
-  const ext=has('uhist');h+='<table class="t95"><tr><th>Пост</th><th>Удержание</th>'+(ext?'<th>Реакция</th>':'')+'</tr>'+u.hh.slice().reverse().map(x=>{const p=POOL.find(q=>q.id==x.p);return '<tr><td>'+(p?FICON[p.fmt]+' '+esc(p.txt.slice(0,50)):'<span class="lbl">пост исчез</span>')+'</td><td>'+(x.sk&&ext?'<span class="dn">пропустил</span>':sec(x.dw))+'</td>'+(ext?'<td>'+(x.lk?'♥ ':'')+(x.q?'<b class="dn">ушёл после</b>':'')+'</td>':'')+'</tr>'}).join('')+'</table>';
-  const nx=[];const sv=u.seen.slice();for(let i=0;i<4;i++){const p=rankFor(u);if(!p)break;nx.push(p);u.seen.push(p.id)}u.seen=sv;
-  return h+'<div class="lbl">Следующее в его ленте: '+nx.map(p=>FICON[p.fmt]+' «'+esc(p.txt.slice(0,30))+'…»').join(' · ')+'</div>'}},
- goals:{t:'Цели',i:'help',w:360,h:440,r(){return GOALS.map(([id,n])=>'<div class="'+(S.goals[id]?'up':'')+'">'+(S.goals[id]?'✓':'○')+' '+n+'</div>').join('')}},
- mail:{t:'Почта',i:'mail',w:400,h:340,r(){S.mails.forEach(m=>m.read=true);return S.mails.map(m=>'<div class="news">'+m.t+'</div>').join('')||'<span class="lbl">Пусто.</span>'}},
- help:{t:'Справка',i:'help',w:440,h:380,r(){return '<b>Как играть</b><ul><li>Ты — алгоритм ленты. ▲ — показывать пост чаще, ▼ — реже.</li><li>Цель — чтобы люди дольше смотрели ленту. Об этом говорит <b>среднее удержание</b>: сколько секунд в среднем смотрят один пост.</li><li>Деньги платит рекламный баннер — за время, которое люди проводят на платформе.</li><li>Серверы ограничивают, сколько людей может быть онлайн одновременно.</li><li>Никто не скажет, какие у людей интересы. Их можно открыть: собрать слова, сгруппировать, проверить в лаборатории.</li></ul>'}}};
-const cat=id=>S.lab.cats.find(c=>c.id==id)||{name:'?'};
+const mins=x=>x==null?'—':x<1?Math.round(x*60)+' с':Math.round(x)+' мин';
+let Q={q:'',arch:false,sort:'date',media:'',len:'',cat:'',tone:'',emo:''},QR=[],SELP=null,FEEDOFF=0,HOVER=false,DR=null,UF={age:'',reg:'',cat:'',min:50};
+const newDR=()=>({conds:[{k:'word',op:'>',v:'',not:false}],join:'and',act:has('a_str')?'2':'2',aud:null,folder:''});
+// ---------- пост ----------
+function metaHTML(p){const R=rep();return '👁 '+fc(p.views*R)+(has('m_likes')?' · ♥ '+fc(p.likes*R):'')+(has('m_coms')?' · 💬 '+fc(p.coms*R):'')+(has('m_shares')?' · ⟲ '+fc(p.shares*R):'')+
+ (has('m_cats')?' · <span class="tag">'+p.cats.map(c=>CATS[c]).join(', ')+'</span>':'')+(has('m_tone')?' · '+['😠','😐','🙂'][p.tone]:'')+(has('m_emo')?' · эмоц. '+Math.round(p.emo):'')}
+function postHTML(p,o={}){const mark=has('mark_iv')&&(p.pri||p.blocked)?(p.blocked?' dnd':' upd'):'';
+ return '<article class="post'+mark+'" data-a="psel" data-p="'+p.id+'"><div class="av">'+avImg(p.av,32)+'</div><div class="pc"><div class="meta"><b>'+esc(p.auN)+'</b> <span class="lbl">'+dateStr(p.born)+(p.media?' · '+p.media:'')+'</span></div>'+
+ '<div class="txt">'+esc(p.txt)+'</div>'+(p.ph!=null&&!o.compact?'<div class="pimg'+(p.media=='видео'?' vid':'')+'"><img class="ph" loading="lazy" src="'+IMGP[p.ph%PHOTOS]+'" alt=""></div>':'')+
+ '<div class="meta">'+metaHTML(p)+(p.blocked?' · <b class="dn">заблокирован</b>':p.pri?' · <b class="up">макс. приоритет</b>':'')+(p.ruleLim?' · <b class="dn">ограничен правилом</b>':p.boost>0?' · <span class="up">правила +'+p.boost+'</span>':'')+'</div></div></article>'}
+function postDetail(p){if(!p)return '<div class="lbl">Нажми на пост, чтобы увидеть подробности и вмешаться.</div>';const inA=S.arch.includes(p);
+ let h='<fieldset><legend>Публикация #'+p.id+(inA?' (архив)':'')+'</legend>'+postHTML(p,{compact:1})+'<div class="row">'+
+ (inA?B('Восстановить из архива','prest','data-p="'+p.id+'"'):B('▲ Максимальный приоритет','piv','data-p="'+p.id+'" data-m="max"')+B('⛔ Заблокировать','piv','data-p="'+p.id+'" data-m="block"')+((p.pri||p.blocked)?B('Отменить','piv','data-p="'+p.id+'" data-m="none"'):''))+'</div>';
+ if(has('r_log'))h+='<div class="lbl"><b>Журнал правил:</b> '+(p.log.length?p.log.map(x=>{const R=S.rules.find(r=>r.id==x.r);return '<div>#'+x.r+' '+(R?esc(R.name||''):'')+' → '+x.act+' <span class="lbl">(совпало: '+esc(x.met.join('; '))+')</span></div>'}).join(''):'правила не срабатывали')+'</div>';
+ if(has('comments'))h+='<div class="lbl"><b>Комментарии ('+p.comments.length+'):</b>'+p.comments.slice(-5).map(c=>'<div>'+['😠','😐','🙂'][c.tone]+' <b>'+esc(c.n)+':</b> '+esc(c.txt)+'</div>').join('')+'</div>';
+ return h+'</fieldset>'}
+// ---------- конструктор ----------
+function condKinds(){return Object.keys(COND).filter(k=>!COND[k].need||has(COND[k].need))}
+function condEditor(c,i){const C=COND[c.k];let v='';
+ if(C.val=='text')v='<input data-dc="v" data-i="'+i+'" value="'+esc(c.v)+'" placeholder="слово" style="width:110px">';
+ else if(C.val=='num')v='<select data-dc="op" data-i="'+i+'">'+opt([['>','больше'],['<','меньше']],c.op)+'</select><input type="number" data-dc="v" data-i="'+i+'" value="'+esc(c.v||0)+'" style="width:70px">';
+ else if(C.val=='cat')v='<select data-dc="v" data-i="'+i+'">'+opt(CATS.map((x,j)=>[j,x]),c.v)+'</select>';
+ else if(C.val=='tone')v='<select data-dc="v" data-i="'+i+'">'+opt(TONE.map((x,j)=>[j,x]),c.v)+'</select>';
+ return '<div class="row">'+(i?'<b>'+(DR.join=='or'?'ИЛИ':'И')+'</b>':'<b>ЕСЛИ</b>')+(has('c_not')?'<label><input type="checkbox" data-dc="not" data-i="'+i+'"'+(c.not?' checked':'')+'>НЕ</label>':'')+
+ '<select data-dc="k" data-i="'+i+'">'+opt(condKinds().map(k=>[k,COND[k].n]),c.k)+'</select>'+v+(i?B('×','dcdel','data-i="'+i+'"'):'')+'</div>'}
+function ruleEditor(){if(!DR)DR=newDR();const maxC=has('c_and')?3:1;const acts=has('a_str')?[['1',ACTN[1]],['2',ACTN[2]],['5',ACTN[5]],['limit',ACTN.limit]]:[['2',ACTN[2]],['limit',ACTN.limit]];
+ return '<fieldset><legend>'+(DR.id?'Правка правила #'+DR.id:'Новое правило')+'</legend>'+DR.conds.map(condEditor).join('')+
+ '<div class="row">'+(DR.conds.length<maxC?B('+ условие','dcadd'):'')+(has('c_or')&&DR.conds.length>1?'<select data-dr="join">'+opt([['and','все условия (И)'],['or','любое (ИЛИ)']],DR.join)+'</select>':'')+'</div>'+
+ (has('c_aud')?'<div class="row"><label><input type="checkbox" data-dr="audOn"'+(DR.aud?' checked':'')+'>только для тех, у кого интерес</label>'+(DR.aud?'<select data-dr="audCat">'+opt(CATS.map((x,j)=>[j,x]),DR.aud.cat)+'</select> ≥ <input type="number" data-dr="audMin" value="'+DR.aud.min+'" style="width:50px">':'')+'</div>':'')+
+ '<div class="row"><b>ТО</b><select data-dr="act">'+opt(acts,DR.act)+'</select>'+(has('r_folders')?'папка <input data-dr="folder" value="'+esc(DR.folder||'')+'" style="width:90px">':'')+'</div>'+
+ '<div class="row">'+B(DR.id?'Сохранить':'Добавить правило','rsave')+(DR.id?B('Отмена','rnew'):'')+'</div></fieldset>'}
+function ruleList(){if(!S.rules.length)return '<div class="lbl">Правил пока нет. Правила применяются по порядку и складываются.</div>';const groups={};S.rules.forEach((R,i)=>{(groups[R.folder||'']=groups[R.folder||'']||[]).push([R,i])});
+ return Object.entries(groups).map(([g,L])=>(g?'<div class="sep">📁 '+esc(g)+'</div>':'')+L.map(([R,i])=>{const e7=R.eff7.reduce((a,b)=>a+b,0)+(R.effD||0);
+  return '<div class="card'+(R.on?'':' off')+'"><div class="row"><b>#'+R.id+'</b><span class="lbl">'+esc(ruleTxt(R))+'</span></div><div class="row">'+(has('r_effect')?'<b class="'+(e7>=0?'up':'dn')+'">'+(e7>=0?'+':'')+f(e7)+' мин внимания за 7 дн.</b>':'')+'<span class="lbl">срабатываний: '+(R.hits||0)+'</span>'+
+  B(R.on?'Выкл':'Вкл','rtog','data-r="'+R.id+'"')+B('✎','redit','data-r="'+R.id+'"')+(i?B('↑','rup','data-r="'+R.id+'"'):'')+B('🗑','rdel','data-r="'+R.id+'"')+'</div></div>'}).join('')).join('')}
 // ---------- окна ----------
+const shopBtn=it=>{const p=priceOf(it);return B('$'+f(p),'buy','data-id="'+it.id+'"'+(S.m>=p?'':' disabled'))};
+const WIN={
+ feed:{t:'Лента',i:'lenta',w:460,h:620,live:1,r(){const L=RANK.slice(0,has('feed_compact')?40:20);return '<div class="row"><b>Главная лента</b><span class="lbl">то, что сейчас видят люди'+(has('feed_pause')?' · пауза под курсором':'')+'</span></div><div class="feedbox">'+L.map(p=>postHTML(p,{compact:has('feed_compact')})).join('')+'</div>'}},
+ search:{t:'Поиск',i:'rules',w:620,h:600,live:0,r(){const flt=[];if(has('s_media'))flt.push('<select data-q="media">'+opt([['','медиа: любое'],['any','с фото/видео'],['фото','фото'],['видео','видео'],['none','без медиа']],Q.media)+'</select>');
+  if(has('s_len'))flt.push('<select data-q="len">'+opt([['','длина: любая'],['s','короткие'],['m','средние'],['l','длинные']],Q.len)+'</select>');if(has('m_cats'))flt.push('<select data-q="cat">'+opt([['','тематика: любая']].concat(CATS.map((c,i)=>[i,c])),Q.cat)+'</select>');
+  if(has('m_tone'))flt.push('<select data-q="tone">'+opt([['','тон: любой']].concat(TONE.map((c,i)=>[i,c])),Q.tone)+'</select>');if(has('m_emo'))flt.push('<select data-q="emo">'+opt([['','эмоц.: любая'],['hi','высокая'],['lo','низкая']],Q.emo)+'</select>');
+  const fl=has('s_combo')?flt:flt.slice(0,1);
+  return '<div class="row"><input id="qs" value="'+esc(Q.q)+'" placeholder="слова (словоформы учитываются)" style="width:220px">'+B('Найти','find')+'<label><input type="checkbox" data-q="arch"'+(Q.arch?' checked':'')+'>с архивом</label>'+
+  (has('sort_views')?'<select data-q="sort">'+opt([['date','по дате'],['views','по просмотрам'],['likes','по лайкам'],['coms','по комментариям'],['shares','по репостам']],Q.sort)+'</select>':'')+'</div>'+(fl.length?'<div class="row">'+fl.join('')+(flt.length>1&&!has('s_combo')?'<span class="lbl">несколько фильтров — в магазине</span>':'')+'</div>':'')+
+  '<div class="row"><span class="lbl">Найдено: '+QR.length+'</span>'+(QR.length?B('▲ всем макс. приоритет','pivall','data-m="max"')+B('⛔ заблокировать все','pivall','data-m="block"'):'')+'</div>'+
+  postDetail(SELP&&(postById(SELP)))+'<div class="feedbox">'+QR.slice(0,40).map(p=>postHTML(p,{compact:1})).join('')+'</div>'+
+  (S.iv.length?'<fieldset><legend>Вмешательства ('+S.iv.length+')</legend>'+S.iv.slice(0,15).map(id=>{const p=postById(id);return p?'<div class="row"><span class="lbl">'+(p.blocked?'⛔':'▲')+' '+esc(p.txt.slice(0,50))+'</span>'+B('Отменить','piv','data-p="'+id+'" data-m="none"')+'</div>':''}).join('')+'</fieldset>':'')}},
+ news:{t:'Новости',i:'mail',w:400,h:420,live:1,r(){return '<div class="lbl">Новости внешнего мира. Ключевые слова — для поиска. Если подавить связанные посты, событие закончится раньше.</div>'+(S.news.length?S.news.map(n=>{const E=S.ev.find(e=>e.id==n.id);const D=E&&EVT.find(x=>x.k==E.k);
+  return '<div class="news"><b>'+esc(n.txt)+'</b><div class="lbl">'+n.src+' · '+dateStr(n.t)+(D?' · ключевые слова: '+D.kw.map(w=>'<a data-a="qw" data-w="'+w+'">'+w+'</a>').join(', ')+' · постов: '+S.P.filter(p=>p.ev==n.id).length:'')+'</div></div>'}).join(''):'<div class="lbl">Пока тихо.</div>')}},
+ users:{t:'Пользователи',i:'people',w:600,h:540,live:0,r(){let L=S.U.filter(u=>!u.gone);if(has('u_filter')){if(UF.age)L=L.filter(u=>UF.age=='y'?u.age<25:UF.age=='m'?u.age>=25&&u.age<45:u.age>=45);if(UF.reg!=='')L=L.filter(u=>u.reg==+UF.reg)}
+  if(has('u_filter2')&&UF.cat!=='')L=L.filter(u=>u.it[+UF.cat]>=UF.min);const u=S.sel&&byId(S.sel);
+  let h=(has('u_filter')?'<div class="row"><select data-uf="age">'+opt([['','возраст: все'],['y','до 25'],['m','25–44'],['o','45+']],UF.age)+'</select><select data-uf="reg">'+opt([['','регион: все']].concat(REGIONS.map((r,i)=>[i,r])),UF.reg)+'</select>'+
+   (has('u_filter2')?'<select data-uf="cat">'+opt([['','интерес: любой']].concat(CATS.map((c,i)=>[i,c])),UF.cat)+'</select> ≥ <input type="number" data-uf="min" value="'+UF.min+'" style="width:50px">':'')+'<span class="lbl">'+fc(L.length*rep())+' чел.</span></div>':'')+
+  '<div class="ulist">'+L.slice(0,60).map(x=>'<span class="lw'+(S.sel==x.id?' on':'')+'" data-a="usel" data-id="'+x.id+'">'+avImg(x.av,16)+' '+esc(x.n)+'</span>').join('')+'</div>';if(!u)return h+'<div class="lbl">Выбери пользователя.</div>';
+  h+='<fieldset><legend>'+esc(u.n)+'</legend>'+avImg(u.av,48)+(has('u_profile')?' <span>'+u.age+' лет · '+REGIONS[u.reg]+'</span>':'');
+  if(has('u_stats'))h+='<div class="lbl">Время в соцсети: '+mins(u.timeAvg)+' в день · заходов в день: '+u.v.toFixed(1)+'</div>';
+  if(has('u_int'))h+='<div class="lbl">Интересы: '+CATS.map((c,i)=>[c,u.it[i]]).sort((a,b)=>b[1]-a[1]).slice(0,5).map(x=>x[0]+' '+x[1]).join(', ')+'</div>';
+  if(has('u_beh'))h+='<div class="lbl">Лайкает '+Math.round(u.like*100)+'% · комментирует '+Math.round(u.com*100)+'% · спорит '+Math.round(u.argue*100)+'% · пролистывает '+Math.round(u.scroll*100)+'%</div>';
+  if(has('u_hist'))h+='<table class="t95"><tr><th>Публикация</th><th>Действие</th></tr>'+u.hist.slice(0,30).map(x=>{const p=postById(x.p);return '<tr><td>'+(p?esc(p.txt.slice(0,50)):'—')+'</td><td>'+x.a+'</td></tr>'}).join('')+'</table>';
+  return h+'</fieldset>'}},
+ stats:{t:'Статистика',i:'dash',w:470,h:540,live:1,r(){const d=S.days[S.days.length-1]||{};const w=S.days.slice(-7);const sum=k=>w.reduce((s,x)=>s+(x[k]||0),0);
+  let h='<div class="kv"><span>Пользователей</span><b>'+fc(active()*rep())+'</b><span>Доход в минуту</span><b>$'+f(S.incNow||0)+'</b>'+(has('m_time')?'<span>Время в соцсети</span><b>'+mins(d.timeAvg)+' в день</b><span>Заходов в день</span><b>'+(d.visits||0).toFixed(2)+'</b>':'')+
+   (has('m_flow')?'<span>Пришло за день</span><b class="up">+'+fc((d.joined||0)*rep())+'</b><span>Ушло за день</span><b class="dn">−'+fc(d.left||0)+'</b>':'')+'</div>';
+  if(has('m_flow'))h+='<div class="lbl">Новые приходят по репостам и рекомендациям знакомых — чем больше времени люди проводят в ленте, тем больше. Уходят те, кому скучно: если посты не цепляют несколько дней, человек заходит реже и потом пропадает.</div>';
+  if(has('stat_cmp')&&S.days.length>=14){const p=S.days.slice(-14,-7);const ps=k=>p.reduce((s,x)=>s+(x[k]||0),0);h+='<div class="lbl">Неделя к неделе: доход '+pct(sum('inc'),ps('inc'))+' · внимание '+pct(sum('att'),ps('att'))+' · пришло '+pct(sum('joined'),ps('joined'))+'</div>'}
+  if(has('aud_stats')){const L=S.U.filter(u=>!u.gone);h+='<fieldset><legend>Аудитория</legend><div class="lbl">Возраст: до 25 — '+pc(L,u=>u.age<25)+', 25–44 — '+pc(L,u=>u.age>=25&&u.age<45)+', 45+ — '+pc(L,u=>u.age>=45)+'</div><div class="lbl">Регионы: '+REGIONS.map((r,i)=>r+' '+pc(L,u=>u.reg==i)).join(', ')+'</div>'+
+   (has('aud_int')?'<div class="lbl">Сильный интерес (≥50): '+CATS.map((c,i)=>[c,L.filter(u=>u.it[i]>=50).length/Math.max(1,L.length)]).sort((a,b)=>b[1]-a[1]).map(x=>x[0]+' '+Math.round(x[1]*100)+'%').join(', ')+'</div>':'')+'</fieldset>'}
+  h+='<table class="t95"><tr><th>День</th><th>Польз.</th>'+(has('m_time')?'<th>Время</th>':'')+'<th>Доход</th><th>Расход</th></tr>'+S.days.slice(-8).reverse().map(x=>'<tr><td>'+dateStr(x.day*TICK_DAY)+'</td><td>'+fc(x.users)+'</td>'+(has('m_time')?'<td>'+mins(x.timeAvg)+'</td>':'')+'<td>$'+f(x.inc)+'</td><td>$'+f(x.cost)+'</td></tr>').join('')+'</table>';return h}},
+ comments:{t:'Комментарии',i:'mail',w:420,h:480,need:'comments',live:1,r(){const L=[];for(const p of S.P.slice(-60))for(const c of p.comments.slice(-3))L.push([p,c]);
+  return L.slice(-40).reverse().map(([p,c])=>'<div class="news" data-a="psel" data-p="'+p.id+'">'+['😠','😐','🙂'][c.tone]+' <b>'+esc(c.n)+':</b> '+esc(c.txt)+'<div class="lbl">к посту «'+esc(p.txt.slice(0,40))+'…»</div></div>').join('')||'<div class="lbl">Пока никто не комментирует.</div>'}},
+ rules:{t:'Конструктор',i:'tree',w:640,h:600,need:'rules',live:0,r(){const q=S.queue.rules;return '<div class="row"><b>Правила ('+S.rules.length+')</b>'+(q?'<span class="lbl">пересчёт: осталось '+q+' публикаций · '+S.recalcSpeed+'/с</span>'+bar(1-q/Math.max(1,S.recalcTotal)):'<span class="lbl">все публикации пересчитаны</span>')+'</div>'+ruleEditor()+ruleList()}},
+ servers:{t:'Серверы',i:'srv',w:420,h:460,live:1,r(){const it=SHOP.find(x=>x.id=='power');return '<div class="kv"><span>Мощность</span><b>'+f(capacity())+' (ур. '+lvl('power')+')</b><span>Нагрузка</span><b class="'+(S.load>1?'dn':'')+'">'+Math.round((S.load||0)*100)+'%</b><span>Производительность</span><b class="'+(S.perf<1?'dn':'')+'">'+Math.round(S.perf*100)+'%</b>'+
+  '<span>Электричество</span><b>×'+S.elecP.toFixed(2)+'</b><span>Вода</span><b>×'+S.waterP.toFixed(2)+'</b><span>Расход в день</span><b>$'+f(S.costDay||0)+'</b></div>'+bar(Math.min(1,S.load||0),S.load>1?'red':'')+
+  '<fieldset><legend>Очереди</legend><div class="lbl">Пересчёт правил: '+S.queue.rules+' · новые посты: '+S.queue.posts+' · задержка ленты: '+S.queue.feed+' · данные: '+S.queue.data+'</div>'+(S.load>1?'<div class="dn">Перегрузка: лента обновляется реже, пересчёт медленнее, данные продаются хуже.</div>':'')+(S.m<0?'<div class="dn">Баланс отрицательный — серверы теряют производительность.</div>':'')+'</fieldset>'+
+  (has('srv_fc')?'<div class="lbl">Прогноз расходов на 30 дней: $'+f(forecastCost(30))+'</div>':'')+'<div class="row"><b>Мощность +20%</b>'+shopBtn(it)+'</div>'}},
+ ads:{t:'Реклама',i:'srv',w:340,h:260,live:1,r(){const it=SHOP.find(x=>x.id=='ads');return '<div class="bigm">$'+f(S.incNow||0)+'/мин</div><div class="kv"><span>Ставка</span><b>$'+adRate().toFixed(4)+' за минуту внимания</b><span>Всего с рекламы</span><b>$'+f(S.totals.ads)+'</b></div><div class="row"><b>Рекламная сеть ур. '+lvl('ads')+'</b>'+shopBtn(it)+'</div>'}},
+ analytics:{t:'Аналитика',i:'dash',w:400,h:380,need:'analytics',live:1,r(){const nm={age:'Возраст',reg:'Регион',int:'Интересы',beh:'Поведение',pref:'Предпочтения'},nd={int:'d_int',beh:'d_beh',pref:'d_pref'};
+  return '<div class="lbl">Выбери, какие данные собирать. Каждая категория нагружает серверы. Продажа — автоматически.</div>'+Object.keys(nm).filter(k=>!nd[k]||has(nd[k])).map(k=>'<div><label><input type="checkbox" data-dt="'+k+'"'+(S.data[k]?' checked':'')+'> '+nm[k]+'</label></div>').join('')+
+  '<div class="kv"><span>Доход аналитики</span><b>$'+f(analyticsIncome())+' в день</b><span>Качество данных</span><b>×'+(1+eff('dataQ')).toFixed(1)+'</b></div>'}},
+ shop:{t:'Магазин',i:'tree',w:480,h:580,live:1,r(){const L=SHOP.filter(shopOk);const one=L.filter(x=>!x.lv),mul=L.filter(x=>x.lv);
+  return '<fieldset><legend>Новые функции</legend>'+(one.length?one.map(t=>'<div class="node"><div><b>'+t.n+'</b> <span class="lbl">'+t.b+'</span><div class="lbl">'+t.d+'</div></div>'+shopBtn(t)+'</div>').join(''):'<span class="lbl">Все функции куплены.</span>')+'</fieldset>'+
+  '<fieldset><legend>Улучшения</legend>'+mul.map(t=>'<div class="node"><div><b>'+t.n+' · ур. '+lvl(t.id)+'</b> <span class="lbl">'+t.b+'</span><div class="lbl">'+t.d+'</div></div>'+shopBtn(t)+'</div>').join('')+'</fieldset>'}},
+ goals:{t:'Цели',i:'help',w:340,h:380,r(){return GOALS.map(([id,n])=>'<div class="'+(S.goals[id]?'up':'')+'">'+(S.goals[id]?'✓':'○')+' '+n+'</div>').join('')}}};
+const pc=(L,fn)=>Math.round(L.filter(fn).length/Math.max(1,L.length)*100)+'%';
+const pct=(a,b)=>b?((a>=b?'+':'')+Math.round((a/b-1)*100)+'%'):'—';
+// ---------- оконный менеджер ----------
 let ZT=10;
 function wstate(id){const w=WIN[id];if(!S.wins[id]){const n=Object.keys(S.wins).length;S.wins[id]={open:false,min:false,x:96+(n%6)*34,y:10+(n%6)*26,w:w.w,h:w.h,z:++ZT}}return S.wins[id]}
 const avail=id=>!WIN[id].need||has(WIN[id].need);
-function openWin(id){if(!avail(id))return;const s=wstate(id);s.open=true;s.min=false;s.z=++ZT;fitWin(s);render()}
+function openWin(id){if(!avail(id))return;const s=wstate(id);s.open=true;s.min=false;s.z=++ZT;fitWin(s);render();draw(id)}
 function fitWin(s){const dw=window.innerWidth,dh=window.innerHeight-40;s.w=Math.min(s.w,dw-4);s.h=Math.min(s.h,dh-4);s.x=clamp(s.x,0,Math.max(0,dw-s.w));s.y=clamp(s.y,0,Math.max(0,dh-s.h))}
 function render(){const d=$('wins');Object.keys(WIN).forEach(id=>{const s=S.wins[id];let el=$('w_'+id);if(!s||!s.open||!avail(id)){if(el)el.remove();return}
   if(!el){el=document.createElement('section');el.className='w95 win';el.id='w_'+id;el.innerHTML='<div class="tb" data-drag="'+id+'"><span>'+WIN[id].t+'</span><span class="ctl"><i data-a="wmin" data-id="'+id+'">_</i><i data-a="wclose" data-id="'+id+'">×</i></span></div><div class="bd" id="b_'+id+'"></div>';d.appendChild(el);
-   el.addEventListener('mousedown',()=>{if(s.z<ZT){s.z=++ZT;render()}});if(window.ResizeObserver)new ResizeObserver(()=>{if(el.offsetWidth>50){s.w=el.offsetWidth;s.h=el.offsetHeight}}).observe(el);draw(id)}
+   el.addEventListener('mousedown',()=>{if(s.z<ZT){s.z=++ZT;render()}});if(id=='feed'){el.addEventListener('mouseenter',()=>HOVER=true);el.addEventListener('mouseleave',()=>HOVER=false)}
+   if(window.ResizeObserver)new ResizeObserver(()=>{if(el.offsetWidth>50){s.w=el.offsetWidth;s.h=el.offsetHeight}}).observe(el);draw(id)}
   el.style.cssText='left:'+s.x+'px;top:'+s.y+'px;width:'+s.w+'px;height:'+s.h+'px;z-index:'+s.z+';display:'+(s.min?'none':'flex');el.classList.toggle('active',s.z==ZT)});taskbar()}
 function draw(id){const b=$('b_'+id);if(!b)return;const ae=document.activeElement;if(ae&&b.contains(ae)&&(ae.tagName=='SELECT'||ae.tagName=='INPUT'))return;const fb=b.querySelector('.feedbox'),fst=fb?fb.scrollTop:0,st=b.scrollTop;b.innerHTML=WIN[id].r();b.scrollTop=st;const nf=b.querySelector('.feedbox');if(nf)nf.scrollTop=fst}
+const redraw=()=>Object.keys(WIN).forEach(id=>S.wins[id]&&S.wins[id].open&&draw(id));
 function taskbar(){$('tasks').innerHTML=Object.keys(WIN).filter(id=>S.wins[id]&&S.wins[id].open&&avail(id)).map(id=>'<button class="b95 task'+(S.wins[id].z==ZT&&!S.wins[id].min?' on':'')+'" data-a="task" data-id="'+id+'">'+WIN[id].t+'</button>').join('')}
-function icons(){if(!$('icons'))return;const un=S.mails.filter(m=>!m.read).length;$('icons').innerHTML=Object.keys(WIN).filter(avail).map(id=>'<div class="ico" data-a="open" data-id="'+id+'">'+ICONS[WIN[id].i]+'<span>'+WIN[id].t+(id=='mail'&&un?' ('+un+')':'')+'</span></div>').join('');
+function icons(){if(!$('icons'))return;$('icons').innerHTML=Object.keys(WIN).filter(avail).map(id=>'<div class="ico" data-a="open" data-id="'+id+'">'+ICONS[WIN[id].i]+'<span>'+WIN[id].t+'</span></div>').join('');
  $('startmenu').innerHTML=Object.keys(WIN).map(id=>'<div class="smi'+(avail(id)?'':' dis')+'" data-a="open" data-id="'+id+'">'+ICONS[WIN[id].i].replace(/width="32" height="32"/,'width="20" height="20"')+' '+WIN[id].t+(avail(id)?'':' 🔒')+'</div>').join('')+'<div class="smi" data-a="reset">⟲ Новая игра</div>'}
 // ---------- ввод ----------
 let DRAG=null;
@@ -722,52 +573,48 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest('[data-drag
 document.addEventListener('pointermove',e=>{if(!DRAG)return;const s=S.wins[DRAG.id];s.x=e.clientX-DRAG.dx;s.y=e.clientY-DRAG.dy;fitWin(s);const el=$('w_'+DRAG.id);el.style.left=s.x+'px';el.style.top=s.y+'px'});
 document.addEventListener('pointerup',()=>{DRAG=null});
 window.addEventListener('resize',()=>{Object.values(S.wins).forEach(fitWin);render()});
-document.addEventListener('click',e=>{const t=e.target.closest('[data-a],[data-w]');if(!$('startmenu').contains(e.target)&&!e.target.closest('#startbtn'))$('startmenu').style.display='none';if(!t)return;const d=t.dataset,a=d.a;
- if(d.w&&!a){const m=dictAdd(d.w);toast(m?'«'+d.w+'»: '+m:'В словаре: «'+dictKey(d.w)+'»');draw('feed');draw('dict');return}
- if(a=='open'){openWin(d.id);$('startmenu').style.display='none'}if(a=='wclose'){S.wins[d.id].open=false;render()}if(a=='wmin'){S.wins[d.id].min=true;render()}
- if(a=='task'){const s=S.wins[d.id];if(s.min||s.z!=ZT){s.min=false;s.z=++ZT}else s.min=true;render()}if(a=='start'){const m=$('startmenu');m.style.display=m.style.display=='block'?'none':'block'}
- if(a=='click'){const r=clickPost(+d.p);if(r){floatTxt('+'+r.sec.toFixed(1)+' с · +$'+f(r.$),e);draw('feed');draw('net')}}
- if(a=='mkfeed'){const p=S.recent.find(x=>x.id==+d.p);if(p&&S.feeds.length<feedCap()){const ids=lookalike(p);const n=S.feeds.length;const A={id:S.audN++,name:'Аудитория №'+n,m:ids,st:[0,0],born:S.t};S.aud.push(A);addFeed(A.name,A.id);toast('Новая лента: <b>'+A.name+'</b> — '+ids.length+' человек');draw('feeds');draw('feed')}}
- if(a=='lvl'){const F=S.feeds.find(x=>x.id==+d.f);if(F){lvlUp(F,LVLM);draw('feeds');draw('net')}}
- if(a=='lvlmode'){LVLM=+d.m;draw('feeds')}
- if(a=='fren'){const F=S.feeds.find(x=>x.id==+d.f);const n=prompt('Название ленты',F.name);if(n){F.name=n;const A=S.aud.find(a=>a.id==F.aud);if(A){A.name=n;A.renamed=1}}draw('feeds')}
- if(a=='fadd'){const F=S.feeds.find(x=>x.id==+d.f);if(F&&WSEL&&!F.filter.includes(WSEL))F.filter.push(WSEL);draw('feeds')}
- if(a=='funf'){const F=S.feeds.find(x=>x.id==+d.f);if(F)F.filter=F.filter.filter(w=>w!=d.w);draw('feeds')}
- if(a=='send'){const p=S.inbox.find(x=>x.id==+d.p);if(p){send(p,+d.aud);draw('feed')}}
- if(a=='mkaud'){const p=POOL.find(x=>x.id==+d.p);if(p){const m=mkAud(d.k=='l'?p.likers||[]:p.longers||[]);toast(m||'Новая аудитория: <b>'+S.aud[S.aud.length-1].name+'</b> — '+S.aud[S.aud.length-1].m.length+' человек');draw('feed');draw('aud');icons()}}
- if(a=='aren'){const A=S.aud.find(x=>x.id==+d.id);const n=prompt('Как назвать аудиторию?',A.name);if(n){A.name=n;A.renamed=1}draw('aud');draw('feed')}
- if(a=='adel'){S.aud=S.aud.filter(x=>x.id!=+d.id);S.rules=S.rules.filter(r=>!(r.kind=='send'&&r.aud==+d.id));draw('aud');draw('feed')}
- if(a=='caud'){const C=S.lab.cats.find(c=>c.id==+d.id);const m=C?catFeed(C):'?';toast(m||'Лента «'+C.name+'» будет пополняться сама');draw('lab');draw('feeds')}
- if(a=='fmode'){FEEDMODE=d.m;draw('feed')}
- if(a=='buy'&&buy9(d.id)){const t=TECH8.find(x=>x.id==d.id);toast('Установлено: <b>'+(t?t.n:'Сервер')+'</b>');const w=Object.keys(WIN).find(k=>WIN[k].need==d.id);icons();if(w)openWin(w);osUp();draw('shop')}
- if(a=='mkrule'){const cs=[[DR.k,DR.v],[DR.k2,DR.v2],[DR.k3,DR.v3]].slice(0,ruleConds()).filter(([k])=>k).map(([k,v])=>({k,v:k=='fmt'?+(v||0):['retGt','retLt','viewsGt','viewsLt','likesGt','comsGt','quitsGt'].includes(k)?+(v===''?10:v):k=='word'?(v||Object.keys(S.dict.words)[0]):+(v||(k=='cat'?(S.lab.cats[0]||{}).id:(S.dict.groups[0]||{}).id))}));
-  if(cs.length){const on=S.rules.filter(r=>r.on).length<ruleSlots();const snd=String(DR.act)[0]=='a';S.rules.push(snd?{kind:'send',aud:+String(DR.act).slice(1),conds:cs,join:DR.join,act:0,on}:{conds:cs,join:DR.join,act:+DR.act,on});toast(on?'Правило создано':'Правило создано, но выключено: все слоты заняты');draw('rules')}}
- if(a=='mkprule'){const gs=S.dict.groups.map(g=>String(g.id)).concat(S.lab.cats.map(c=>'c'+c.id));const ga=DR.ga||gs[0],gb=DR.gb||gs[0];if(ga!=null&&gb!=null){const on=S.rules.filter(r=>r.on).length<ruleSlots();S.rules.push({kind:'pers',who:DR.who||'l',ga:/^c/.test(ga)?ga:+ga,gb:/^c/.test(gb)?gb:+gb,act:+(DR.pact||2),conds:[],on});toast(on?'Персональное правило создано':'Создано, но выключено: все слоты заняты');draw('rules')}}
- if(a=='unrule'){S.rules.splice(+d.i,1);draw('rules')}
- if(a=='wsel'){WSEL=WSEL==d.w?null:d.w;draw('dict')}if(a=='wdel'){delete S.dict.words[d.w];S.dict.groups.forEach(g=>g.words=g.words.filter(x=>x!=d.w));draw('dict')}
- if(a=='gnew'){const n=($('gname')||{}).value||('Группа '+S.dict.gid);if(S.dict.groups.length<groupCap())S.dict.groups.push({id:S.dict.gid++,name:n,words:[]});draw('dict')}
- if(a=='gdel'){S.dict.groups=S.dict.groups.filter(g=>g.id!=+d.g);draw('dict')}if(a=='gin'){const g=S.dict.groups.find(x=>x.id==+d.g);if(g&&WSEL)g.words.push(WSEL);draw('dict')}
- if(a=='gout'){const g=S.dict.groups.find(x=>x.id==+d.g);if(g)g.words=g.words.filter(x=>x!=d.w);draw('dict')}if(a=='gren'){const g=S.dict.groups.find(x=>x.id==+d.g);const n=prompt('Новое название',g.name);if(n)g.name=n;draw('dict')}
- if(a=='lgo'){const m=labStart(+d.g);toast(m||'🔬 Исследование запущено');draw('lab')}
- if(a=='xgo'){const m=expStart(+$('xr').value,+$('xd').value,$('xs').value=='all'?'all':+$('xs').value);toast(m||'🧪 Эксперимент запущен');draw('exp')}
- if(a=='usel'){S.sel=+d.id;draw('users')}
- if(a=='reset'){if(S.resetAsk){try{localStorage.removeItem('lenta9')}catch(x){}location.reload()}else{S.resetAsk=1;toast('Нажми «Новая игра» ещё раз');setTimeout(()=>S.resetAsk=0,4000)}}
- stats()});
-document.addEventListener('change',e=>{const d=e.target.dataset;if(d.fg){const F=S.feeds.find(x=>x.id==+d.fg);const g=S.dict.groups.find(x=>x.id==+e.target.value);if(F&&g)F.filter=[...new Set(F.filter.concat(g.words))];draw('feeds')}if(d.dr){DR[d.dr]=e.target.value;if(d.dr.startsWith('k'))DR['v'+d.dr.slice(1)]='';draw('rules')}if(d.ron!=null){const r=S.rules[+d.ron];if(e.target.checked&&S.rules.filter(x=>x.on).length>=ruleSlots()){e.target.checked=false;toast('Все слоты правил заняты');return}r.on=e.target.checked}
- if(d.r=='adLoad'){S.adLoad=+e.target.value/100}});
-document.addEventListener('input',e=>{if(e.target.id=='qs'){QS=normW(e.target.value);const b=$('b_dict');if(b){const v=e.target.value;b.innerHTML=WIN.dict.r();const q=$('qs');q.focus();q.value=v}}});
-const OS8=[['#008080','ЛентаОС 95'],['#3a6ea5','ЛентаОС 98'],['#5a7d5a','ЛентаОС ME'],['#6b4a8a','ЛентаОС 2000'],['#245edb','ЛентаОС XP'],['#120818','ЛЕНТА.AI']];
-function osUp(){const i=has('autoRes')?5:has('pers')?4:has('users')?3:has('lab')?2:has('rules')?1:0;if(S.osI!=null&&i>S.osI)toast('Обновление системы: <b>'+OS8[i][1]+'</b>');S.osI=i;document.body.style.background=OS8[i][0];document.body.className='e'+i;$('osn').textContent=OS8[i][1]}
-function stats(){$('tray').innerHTML='💲'+f(S.m)+' (+'+f(perSec())+'/с) &nbsp; ⏱ '+sec(S.avgRet)}
-function floatTxt(t,e){const d=document.createElement('div');d.className='floater';d.textContent=t;const x=e&&e.clientX?e.clientX:window.innerWidth/2,y=e&&e.clientY?e.clientY:200;d.style.left=x+'px';d.style.top=(y-20)+'px';document.body.appendChild(d);setTimeout(()=>d.remove(),1200)}
+function doSearch(){QR=search(Q.q,Q)}
+function saveRule(){const conds=DR.conds.filter(c=>c.k!='word'||normW(c.v||''));if(!conds.length){toast('Впиши слово или выбери условие');return}
+ const R=DR.id?S.rules.find(r=>r.id==DR.id):{id:S.rid++,on:true,eff7:[],effD:0,hits:0};Object.assign(R,{conds:conds.map(c=>Object.assign({},c,{v:c.k=='word'?normW(c.v):c.v})),join:DR.join,act:DR.act,aud:DR.aud?Object.assign({},DR.aud):null,folder:DR.folder||''});
+ if(!DR.id)S.rules.push(R);DR=newDR();requeue();toast('Правило #'+R.id+' сохранено. Публикации пересчитываются.')}
+document.addEventListener('click',e=>{const t=e.target.closest('[data-a]');if(!$('startmenu').contains(e.target)&&!e.target.closest('#startbtn'))$('startmenu').style.display='none';if(!t)return;const d=t.dataset,a=d.a;
+ if(a=='start'){const m=$('startmenu');m.style.display=m.style.display=='block'?'none':'block';return}
+ if(a=='open'){openWin(d.id);$('startmenu').style.display='none';return}
+ if(a=='wclose'){S.wins[d.id].open=false;render();return}if(a=='wmin'){S.wins[d.id].min=true;render();return}
+ if(a=='task'){const s=S.wins[d.id];if(s.min||s.z!=ZT){s.min=false;s.z=++ZT}else s.min=true;render();return}
+ if(a=='pause'){S.paused=!S.paused;stats();return}
+ if(a=='reset'){if(confirm('Начать заново?')){localStorage.removeItem('lenta10');location.reload()}return}
+ if(a=='buy'){if(buy(d.id)){const it=SHOP.find(x=>x.id==d.id);toast('Куплено: <b>'+it.n+'</b>');icons();render();redraw()}return}
+ if(a=='psel'){SELP=+d.p;openWin('search');draw('search');return}
+ if(a=='piv'){const p=postById(+d.p);if(p){intervene(p,d.m);redraw()}return}
+ if(a=='pivall'){QR.filter(p=>S.P.includes(p)).forEach(p=>intervene(p,d.m));redraw();return}
+ if(a=='prest'){const p=postById(+d.p);if(p){restore(p);doSearch();draw('search')}return}
+ if(a=='find'){Q.q=$('qs').value;doSearch();draw('search');return}
+ if(a=='qw'){Q.q=d.w;doSearch();openWin('search');return}
+ if(a=='usel'){S.sel=+d.id;draw('users');return}
+ if(a=='dcadd'){DR.conds.push({k:'word',op:'>',v:'',not:false});draw('rules');return}if(a=='dcdel'){DR.conds.splice(+d.i,1);draw('rules');return}
+ if(a=='rsave'){saveRule();draw('rules');return}if(a=='rnew'){DR=newDR();draw('rules');return}
+ const R=d.r&&S.rules.find(r=>r.id==+d.r);
+ if(a=='rtog'&&R){R.on=!R.on;requeue();draw('rules');return}if(a=='rdel'&&R){S.rules=S.rules.filter(x=>x!==R);requeue();draw('rules');return}
+ if(a=='redit'&&R){DR=JSON.parse(JSON.stringify({id:R.id,conds:R.conds,join:R.join,act:R.act,aud:R.aud,folder:R.folder}));draw('rules');return}
+ if(a=='rup'&&R){const i=S.rules.indexOf(R);S.rules.splice(i,1);S.rules.splice(i-1,0,R);requeue();draw('rules');return}});
+document.addEventListener('change',e=>{const d=e.target.dataset,el=e.target,val=el.type=='checkbox'?el.checked:el.value;
+ if(d.q){Q[d.q]=val;doSearch();draw('search');return}
+ if(d.uf){UF[d.uf]=d.uf=='min'?+val:val;draw('users');return}
+ if(d.dt){S.data[d.dt]=val;draw('analytics');return}
+ if(d.dc){const c=DR.conds[+d.i];if(d.dc=='k'){c.k=val;c.v=COND[val].val=='num'?10:COND[val].val=='text'?'':0;c.op='>'}else c[d.dc]=val;draw('rules');return}
+ if(d.dr){if(d.dr=='audOn')DR.aud=val?{cat:0,min:50}:null;else if(d.dr=='audCat')DR.aud.cat=+val;else if(d.dr=='audMin')DR.aud.min=+val;else DR[d.dr]=val;draw('rules')}});
+document.addEventListener('keydown',e=>{if(e.key=='Enter'&&e.target.id=='qs'){Q.q=e.target.value;doSearch();draw('search')}});
+function stats(){$('tray').innerHTML=B(S.paused?'▶':'⏸','pause')+' '+dateStr()+' &nbsp; 💲'+f(S.m)+' (+'+f(S.incNow||0)+'/мин) &nbsp; 👥 '+fc(active()*rep())}
 // ---------- сохранение ----------
-function save(){try{const U=S.U.map(u=>Object.assign({},u,{lw:trimLw(u.lw),seen:[],hh:u.hh.slice(-12),likes:u.likes.slice(-8)}));const o=Object.assign({},S,{U,win:[],winSum:0,lab:Object.assign({},S.lab)});localStorage.setItem('lenta9',JSON.stringify({S:o,P:POOL.slice(-120)}))}catch(e){}}
-function trimLw(lw){if(!lw)return lw;const e=Object.entries(lw);if(e.length<=40)return lw;return Object.fromEntries(e.sort((a,b)=>(b[1][0]+b[1][2])-(a[1][0]+a[1][2])).slice(0,40))}
-function load(){try{const o=JSON.parse(localStorage.getItem('lenta9'));if(!o||!o.S||o.S.v!=8)return false;S=Object.assign(BASE8(),o.S);POOL=o.P||[];UMAP.clear();S.U.forEach(u=>{UMAP.set(u.id,u);u.seen=u.seen||[]});S.win=[];S.winSum=0;return true}catch(e){return false}}
-function tick(){step();if(S.t%1==0&&S.wins.feeds&&S.wins.feeds.open)draw('feeds');stats();Object.keys(WIN).forEach(id=>{if(WIN[id].live&&id!='feed'&&S.wins[id]&&S.wins[id].open&&!S.wins[id].min)draw(id)});if(S.t%3==0&&S.wins.feed&&S.wins.feed.open)draw('feed');if(S.t%10==0){icons();render()}if(S.t%10==0)save()}
-function boot(){if(!load()){init8();['feed','net','shop','goals','feeds'].forEach(wstate);const vw=window.innerWidth;Object.assign(S.wins.feed,{x:96,y:8,open:true});Object.assign(S.wins.net,{x:Math.min(610,vw-330),y:8,open:true});Object.assign(S.wins.shop,{x:Math.min(610,vw-480),y:350,open:true});Object.assign(S.wins.feeds,{x:Math.min(950,vw-520),y:8,open:vw>1300});
-  mail('<b>Директор:</b> Привет, алгоритм. Жми ▲ на постах во «Входящих» — каждый показ приносит деньги за секунды внимания. Прогноз подскажет, что зайдёт. Накопишь $5 — купи ленту, она будет работать сама.')}
- ZT=Math.max(10,...Object.values(S.wins).map(w=>w.z||0));osUp();icons();Object.values(S.wins).forEach(fitWin);render();stats();setInterval(tick,1000)}
-(function(){const st=document.createElement('style');st.textContent='.bigm{font-size:34px;font-weight:bold}.big2{font-size:16px;color:#064;margin-bottom:6px}.floater{position:fixed;z-index:99999;font-weight:bold;color:#0a6;text-shadow:0 0 3px #fff;pointer-events:none;animation:fl 1.2s ease-out forwards}@keyframes fl{to{transform:translateY(-50px);opacity:0}}.feedc.flash{background:#eaffea}.pred{color:#035}.post{flex-wrap:wrap}.post>.sendrow,.post>.sentx{flex-basis:100%;margin-left:44px}.sentx .b95{font-size:11px;padding:1px 6px;margin-right:4px}.sendrow{display:flex;flex-wrap:wrap;gap:3px;align-items:center;margin-top:3px}.sendrow .prog{width:100%}.big{font-size:28px;font-weight:bold}.wl{max-height:200px;overflow:auto;margin:4px 0}.lw{display:inline-block;margin:2px;padding:1px 4px;border:1px solid #888;background:#fff;cursor:pointer;font-size:12px}.lw.on{background:#ffe680}.ulist{max-height:70px;overflow:auto}.lnk{border:1px solid #99a;padding:3px;background:#eef;font-size:12px}.lockera{opacity:.6}body.e5 .win .tb{background:linear-gradient(90deg,#000,#7a0b5e);color:#0ff}';document.head.appendChild(st)})();
+function save(){try{const o=Object.assign({},S,{U:S.U.map(u=>Object.assign({},u,{hist:u.hist.slice(0,30)})),arch:S.arch.slice(-500)});localStorage.setItem('lenta10',JSON.stringify(o))}catch(e){}}
+function loadGame(){try{const o=JSON.parse(localStorage.getItem('lenta10'));if(!o||o.v!=10)return false;S=Object.assign(BASE10(),o);UMAP.clear();PMAP.clear();S.U.forEach(u=>UMAP.set(u.id,u));S.P.concat(S.arch).forEach(p=>PMAP.set(p.id,p));S.paused=false;rerank();return true}catch(e){return false}}
+let NB=0;
+function tick(){step();stats();if(S.paused)return;Object.keys(WIN).forEach(id=>{if(WIN[id].live&&S.wins[id]&&S.wins[id].open&&!S.wins[id].min&&!(id=='feed'&&HOVER&&has('feed_pause')))draw(id)});
+ if(S.t%3==0&&S.wins.rules&&S.wins.rules.open&&S.queue.rules)draw('rules');const nb=SHOP.filter(x=>!x.lv&&shopOk(x)&&S.m>=x.p).length;if(nb>NB)icons();NB=nb;if(S.t%10==0){icons();render();save()}}
+function boot(){if(!loadGame()){init10();['feed','stats','shop','search','news','servers','ads','goals','users'].forEach(wstate);const vw=window.innerWidth;
+  Object.assign(S.wins.feed,{x:96,y:8,open:true});Object.assign(S.wins.stats,{x:Math.min(570,vw-470),y:8,open:true});Object.assign(S.wins.shop,{x:Math.min(1050,vw-480),y:8,open:vw>1400});Object.assign(S.wins.news,{x:Math.min(570,vw-400),y:370,open:true})}
+ ZT=Math.max(10,...Object.values(S.wins).map(w=>w.z||0));document.body.style.background='#008080';icons();Object.values(S.wins).forEach(fitWin);render();stats();setInterval(tick,1000)}
+(function(){const st=document.createElement('style');st.textContent='.post{display:flex;gap:6px;align-items:flex-start}.post .pc{flex:1;min-width:0}.post .txt{white-space:normal}.bigm{font-size:28px;font-weight:bold}.card.off{opacity:.5}.post{cursor:pointer}.post.upd{background:#eaffea}.post.dnd{background:#ffeaea}.dn{color:#a00}.up{color:#063}.ulist{max-height:110px;overflow:auto}.lw{display:inline-block;margin:2px;padding:1px 4px;border:1px solid #888;background:#fff;cursor:pointer;font-size:12px}.lw.on{background:#ffe680}.news a{color:#00a;cursor:pointer;text-decoration:underline}.feedbox{max-height:none}';document.head.appendChild(st)})();
 if(!window.NOBOOT)boot();
 </script></body></html>
