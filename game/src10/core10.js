@@ -14,7 +14,7 @@ const NC=CATS.length;
 // темы из справочника v8 → категории
 const T2C={0:[0],1:[0],2:[4],3:[4],4:[4],5:[3],6:[3],7:[3],8:[10],9:[2],10:[9],11:[2],12:[2],13:[2],14:[1],15:[8],16:[8],17:[8],18:[2],19:[9],20:[5],21:[5],22:[5],23:[7],24:[2],25:[5],26:[6],27:[6],28:[9],29:[4],30:[5],31:[5],32:[5],33:[5],34:[5],35:[5],36:[5],37:[5],38:[5],39:[1],40:[11],41:[11],42:[5],43:[2],44:[5],45:[8],46:[8],47:[8],48:[5],49:[5]};
 // ---------- состояние ----------
-const BASE10=()=>({v:10,t:0,m:20,f:{},lv:{},U:[],nid:0,pid:0,P:[],arch:[],rules:[],rid:1,iv:[],news:[],ev:[],day:{},days:[],
+const BASE10=()=>({v:10,t:0,m:20,f:{},lv:{},U:[],nid:0,pid:0,P:[],arch:[],bp:{nodes:[],nid:1},iv:[],news:[],ev:[],day:{},days:[],
  queue:{rules:0,posts:0,feed:0,data:0},recalc:0,goals:{},wins:{},mails:[],data:{age:false,reg:false,int:false,beh:false,pref:false},dataQ:1,
  elecP:1,waterP:1,neg:0,perf:1,totals:{att:0,ads:0,an:0,cost:0},sel:null,osI:null});
 let S=BASE10();
@@ -50,8 +50,8 @@ const lemma=w=>FORM[w]||(w.length>5?w.slice(0,w.length-2):w);
 // ---------- поведение: просмотр публикации ----------
 function interest(u,p){let m=0;for(const c of p.cats)m=Math.max(m,u.it[c]/100);return m}
 function dwellOf(u,p){const I=interest(u,p);if(Math.random()<u.scroll*.6&&I<.25)return .5+Math.random();const base=p.media=='видео'?20:p.media=='фото'?8:Math.min(30,p.len/15);return Math.max(.5,base*(.25+I*1.3)*(1+p.emo/400)*(.7+Math.random()*.6))}
-function viewPost(u,p){const d=dwellOf(u,p);const I=interest(u,p);p.views++;p.dayViews++;p.att+=d;p.lastV=S.t;u.dayT+=d;u.dayV++;u.dayD+=d;
- const act=[];if(Math.random()<u.like*(.1+I*.6)*(p.tone==2?1.2:1)){p.likes++;act.push('лайк')}
+function viewPost(u,p){const d=dwellOf(u,p);S.dayDw=(S.dayDw||0)+1;S.dayDwS=(S.dayDwS||0)+d;if(p.audN){const N=bpNode(p.audN);if(N)N.effD=(N.effD||0)+(d-(S.avgD||4))*rep()/60}const I=interest(u,p);p.views++;p.dayViews++;p.att+=d;p.lastV=S.t;u.dayT+=d;u.dayV++;u.dayD+=d;
+ const act=[];if(Math.random()<u.like*(.1+I*.6)*(p.tone==2?1.2:1)){p.likes++;act.push('лайк');(u.lk=u.lk||[]).unshift(p.id);u.lk.length>20&&u.lk.pop();(p.likers=p.likers||[]).push(u.id);p.likers.length>30&&p.likers.shift()}
  if(Math.random()<u.com*(.05+I*.3+(p.tone==0?.15:0)+u.argue*p.emo/300)){p.coms++;act.push('комментарий');if(p.comments.length<40)p.comments.push(mkComment(u,p))}
  if(Math.random()<u.share*(.03+I*.25)){p.shares++;act.push('репост');S.day.shares=(S.day.shares||0)+1}
  u.hist.unshift({p:p.id,a:act.length?act.join(', '):'просмотр',t:S.t,d:+d.toFixed(1)});if(u.hist.length>100)u.hist.pop();
@@ -62,7 +62,7 @@ function mkComment(u,p){const tone=clamp(p.tone+(Math.random()<u.argue?-1:0)+(Ma
 let RANK=[];
 function score(p){const age=(S.t-p.born)/TICK_DAY;return 2*Math.exp(-age/2)+Math.min(2,p.likes/(p.views+5)*6)+p.boost+p.pri}
 function rerank(){RANK=S.P.filter(p=>!p.blocked&&p.ruleOk!==null).map(p=>[score(p),p]).sort((a,b)=>b[0]-a[0]).slice(0,120).map(x=>x[1])}
-function pickFor(u){const L=RANK;if(!L.length)return null;let best=null,bs=-1e9;for(let i=0;i<Math.min(L.length,30);i++){const p=L[i];let s=score(p)+Math.random()*1.2-i*.03+audBoost(u,p);if(s>bs){bs=s;best=p}}return best}
+function pickFor(u){const L=RANK;if(!L.length)return null;let best=null,bs=-1e9;for(let i=0,lim=Math.min(L.length,BP_PICK?15:30);i<lim;i++){const p=L[i];let s=score(p)+Math.random()*1.2-i*.03+audBoost(u,p);if(s>bs){bs=s;best=p}}return best}
 // ---------- день ----------
 function tickUsers(){let att=0,views=0;const perf=S.perf;
  for(const u of S.U){if(u.gone)continue;if(Math.random()>u.v/TICK_DAY)continue;
@@ -84,8 +84,8 @@ function endDay(){const R=rep();let tsum=0,n=0,left=0;
  const d={day:dayNo(),users:Math.round(S.reg-(S.left||0)),joined:jn,left:Math.round(left*R),timeAvg,visits,views:Math.round((S.day.views||0)*R),likes:S.P.reduce((s,p)=>s+p.likes,0),att:S.day.att||0,inc:S.day.inc||0,cost:S.day.cost||0,posts:S.P.length};
  S.days.push(d);if(S.days.length>120)S.days.shift();S.day={};
  // старение: забытые публикации уходят в архив
- for(const p of S.P.slice()){const age=(S.t-p.born)/TICK_DAY;const idle=(S.t-p.lastV)/TICK_DAY;if((age>3&&p.dayViews<2)||age>12||idle>2){if(p.pri>0&&age<20)continue;archive(p)}p.dayViews=0}
- for(const R of S.rules)R.eff7.push(R.effD||0),R.eff7.length>7&&R.eff7.shift(),R.effD=0;
+ for(const p of S.P.slice()){const age=(S.t-p.born)/TICK_DAY;const idle=(S.t-p.lastV)/TICK_DAY;if((age>3&&p.dayViews<2)||age>12||idle>2){if(p.pri>0&&age<20)continue;if(bpArchive(p))continue;archive(p)}p.dayViews=0}
+ for(const R of S.bp.nodes){R.eff7=R.eff7||[];R.eff7.push(R.effD||0);R.eff7.length>7&&R.eff7.shift();R.effD=0}S.avgD=S.dayDw?S.dayDwS/S.dayDw:4;S.dayDw=0;S.dayDwS=0;
  econDay();eventsDay()}
 function archive(p){S.P=S.P.filter(x=>x!==p);S.arch.push(p);if(S.arch.length>4000){const o=S.arch.shift();PMAP.delete(o.id)}}
 function restore(p){S.arch=S.arch.filter(x=>x!==p);p.born=S.t;p.lastV=S.t;p.dayViews=0;S.P.push(p);S.queue.posts++}
@@ -94,7 +94,7 @@ function dateStr(t){const d=new Date(2000,0,1);d.setDate(d.getDate()+Math.floor(
 function timeStr(){const fr=(S.t%TICK_DAY)/TICK_DAY*24;return String(Math.floor(fr)).padStart(2,'0')+':'+String(Math.floor(fr%1*60)).padStart(2,'0')}
 // ---------- серверы, очереди, экономика ----------
 const capacity=()=>100*Math.pow(1.2,lvl('power'))*(S.perf);
-function sload(){const users=active()*.06;const rules=S.rules.filter(r=>r.on).reduce((s,r)=>s+r.conds.length,0)*S.P.length*.004*(1-eff('ruleOpt'));const data=Object.values(S.data).filter(Boolean).length*active()*.02;return users+rules+data+S.queue.rules*.05+S.queue.posts*.2}
+function sload(){const users=active()*.06;const rules=S.bp.nodes.length*S.P.length*.0008+(BP_PICK?S.bp.nodes.length*active()*.01:0)*(1-eff('ruleOpt'));const data=Object.values(S.data).filter(Boolean).length*active()*.02;return users+rules+data+S.queue.rules*.05+S.queue.posts*.2}
 function serverTick(){const cap=capacity(),L=sload();S.load=L/cap;const spare=Math.max(.15,cap/L);
  // обработка очередей пропорционально свободной мощности
  const rp=Math.ceil(30*Math.min(1.5,spare)*(1+lvl('power')*.2));const did=Math.min(S.queue.rules,rp);S.queue.rules-=did;S.recalcSpeed=rp;if(did)rulesWork(did);
