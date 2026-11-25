@@ -43,7 +43,7 @@ const DFL=[
 ['sort_p','proc','Отсортировать посты по','',[['posts','ID постов']],[['posts','ID постов']],[['s','','pstat','likes']],(I,P)=>[I[0].filter(pp).sort((a,b)=>pstat(postById(b),P.s)-pstat(postById(a),P.s))]],
 ['take_p','proc','Взять первые N постов','',[['posts','ID постов']],[['posts','ID постов']],[['n','','num',5]],(I,P)=>[I[0].slice(0,+P.n)]],
 ['unseen','proc','Убрать уже увиденное','',[['user','Пользователь'],['posts','ID постов']],[['posts','ID постов']],[],(I)=>{const s=new Set(I[0].hist.slice(0,60).map(h=>h.p));return [I[1].filter(id=>!s.has(id)&&pp(id))]}],
-['tmp','proc','Составить временный список','копит посты за день, отдаёт список',[['post','Пост']],[['posts','ID постов']],[],(I,P,c,N)=>{if(N._d!=dayNo()){N._d=dayNo();N._l=[]}if(!N._l.includes(I[0].id))N._l.push(I[0].id);N._l=N._l.slice(-50);return [N._l.slice()]}],
+['tmp','proc','Составить временный список','копит посты за день, отдаёт список',[['post','Пост']],[['posts','ID постов']],[],(I,P,c,N)=>{if(N._d!=dayNo()){N._d=dayNo();N._p=N._l||[];N._l=[]}if(I[0]==null)return [N._l.length?N._l.slice():(N._p||[]).slice()];if(!N._l.includes(I[0].id))N._l.push(I[0].id);N._l=N._l.slice(-50);return [N._l.slice()]}],
 // --- выходы ---
 ['o_alg','out','Отправить в алгоритм','пост снова как новый',[['post','Пост']],[],[],(I,P,c)=>{c.m.resend=true;return 'отправлен заново'}],
 ['o_arch','out','Отправить в архив','',[['post','Пост']],[],[],(I,P,c)=>{c.m.arch=true;return 'в архив'}],
@@ -62,7 +62,7 @@ const bpNode=id=>S.bp.nodes.find(n=>n.id==id);
 let BP_PICK=false,BP_USER=false,PICKN=0;
 function bpIndex(){BP_USER=S.bp.nodes.some(n=>n.t=='src_user');for(const N of S.bp.nodes)N.in=N.in||[]}
 function evalN(N,c){if(c.memo.has(N.id))return c.memo.get(N.id);c.memo.set(N.id,[]);const T=NT[N.t];const I=T.ins.map((x,i)=>{const w=N.in[i];if(!w)return null;const A=bpNode(w.n);if(!A)return null;const v=evalN(A,c)[w.o];return v===undefined?null:v});
- let out;if(I.some(v=>v==null))out=T.outs.map(()=>null);else{c.nid=N.id;out=T.f(I,N.p,c,N)}if(out.some(v=>v!=null)){if(!c.dry)N.hits=(N.hits||0)+1;if(c.trace)c.trace.push({n:N.id,v:out})}c.memo.set(N.id,out);return out}
+ let out;if(I.some(v=>v==null)&&N.t!='tmp')out=T.outs.map(()=>null);else{c.nid=N.id;out=T.f(I,N.p,c,N)}if(out.some(v=>v!=null)){if(!c.dry)N.hits=(N.hits||0)+1;if(c.trace)c.trace.push({n:N.id,v:out})}c.memo.set(N.id,out);return out}
 function runTrig(trig,c){c.trig=trig;c.memo=new Map();c.m=c.m||newM();for(const N of S.bp.nodes){const T=NT[N.t];if(T.g!='out')continue;const I=T.ins.map((x,i)=>{const w=N.in&&N.in[i];if(!w)return null;const A=bpNode(w.n);return A?evalN(A,c)[w.o]:null});
  if(I.some(v=>v==null))continue;c.nid=N.id;const r=T.f(I,N.p,c,N);if(!c.dry)N.hits=(N.hits||0)+1;if(c.trace)c.trace.push({n:N.id,v:[r],out:1});if(c.path)c.path.push(N.id)}return c}
 const newM=()=>({boost:0,block:false,rc:{},resend:false,arch:false,fan:null,inj:null});
