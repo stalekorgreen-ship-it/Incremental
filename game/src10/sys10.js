@@ -77,7 +77,7 @@ const shopOk=it=>it.lv?(it.id=='power'||has('rules'))&&(it.id!='dataQ'||has('ana
 function buy(id){const it=SHOP.find(x=>x.id==id);if(!it||!shopOk(it))return false;const c=priceOf(it);if(S.m<c)return false;S.m-=c;if(it.lv)S.lv[id]=lvl(id)+1;else S.f[id]=1;
  if(id=='analytics'){S.data.age=true;S.data.reg=true}return true}
 // ---------- вехи ----------
-const GOALS=[['u150','150 пользователей',()=>active()*rep()>=150],['r1','Первая схема: событие → действие',()=>S.bp.nodes.some(n=>NT[n.t].g=='act'&&n.hits)],['e500','Модуль с эффектом +500 мин за неделю',()=>S.bp.nodes.some(n=>(n.eff7||[]).reduce((a,b)=>a+b,0)>=500)],
+const GOALS=[['u150','150 пользователей',()=>active()*rep()>=150],['r1','Первая схема: событие → действие',()=>S.bp.nodes.some(n=>NT[n.t].g=='out'&&n.hits)],['e500','Модуль с эффектом +500 мин за неделю',()=>S.bp.nodes.some(n=>(n.eff7||[]).reduce((a,b)=>a+b,0)>=500)],
  ['u500','500 пользователей',()=>active()*rep()>=500],['sup','Подави событие до его конца',()=>(S.suppressed||0)>0],['u2k','2 000 пользователей',()=>active()*rep()>=2000],['t30','Время в соцсети 30 мин в день',()=>{const d=S.days[S.days.length-1];return d&&d.timeAvg>=30}],
  ['u10k','10 000 пользователей',()=>active()*rep()>=1e4],['an1k','Доход аналитики $1 000 в день',()=>analyticsIncome()>=1000],['u50k','50 000 пользователей',()=>active()*rep()>=5e4],['u100k','100 000 пользователей',()=>active()*rep()>=1e5]];
 function goalsTick(){if(S.t%5)return;for(const[id,n,ok]of GOALS)if(!S.goals[id]&&ok()){S.goals[id]=S.t;if(typeof toast=='function')toast('🎯 Веха: '+n)}}

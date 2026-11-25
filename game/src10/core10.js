@@ -14,7 +14,7 @@ const NC=CATS.length;
 // темы из справочника v8 → категории
 const T2C={0:[0],1:[0],2:[4],3:[4],4:[4],5:[3],6:[3],7:[3],8:[10],9:[2],10:[9],11:[2],12:[2],13:[2],14:[1],15:[8],16:[8],17:[8],18:[2],19:[9],20:[5],21:[5],22:[5],23:[7],24:[2],25:[5],26:[6],27:[6],28:[9],29:[4],30:[5],31:[5],32:[5],33:[5],34:[5],35:[5],36:[5],37:[5],38:[5],39:[1],40:[11],41:[11],42:[5],43:[2],44:[5],45:[8],46:[8],47:[8],48:[5],49:[5]};
 // ---------- состояние ----------
-const BASE10=()=>({v:10,t:0,m:20,f:{},lv:{},U:[],nid:0,pid:0,P:[],arch:[],bp:{nodes:[],nid:1},iv:[],news:[],ev:[],day:{},days:[],
+const BASE10=()=>({v:10,t:0,m:20,f:{},lv:{},U:[],nid:0,pid:0,P:[],arch:[],bp:{nodes:[],nid:1},know:{dict:{},fans:{}},iv:[],news:[],ev:[],day:{},days:[],
  queue:{rules:0,posts:0,feed:0,data:0},recalc:0,goals:{},wins:{},mails:[],data:{age:false,reg:false,int:false,beh:false,pref:false},dataQ:1,
  elecP:1,waterP:1,neg:0,perf:1,totals:{att:0,ads:0,an:0,cost:0},sel:null,osI:null});
 let S=BASE10();
@@ -50,7 +50,7 @@ const lemma=w=>FORM[w]||(w.length>5?w.slice(0,w.length-2):w);
 // ---------- поведение: просмотр публикации ----------
 function interest(u,p){let m=0;for(const c of p.cats)m=Math.max(m,u.it[c]/100);return m}
 function dwellOf(u,p){const I=interest(u,p);if(Math.random()<u.scroll*.6&&I<.25)return .5+Math.random();const base=p.media=='видео'?20:p.media=='фото'?8:Math.min(30,p.len/15);return Math.max(.5,base*(.25+I*1.3)*(1+p.emo/400)*(.7+Math.random()*.6))}
-function viewPost(u,p){const d=dwellOf(u,p);S.dayDw=(S.dayDw||0)+1;S.dayDwS=(S.dayDwS||0)+d;if(p.audN){const N=bpNode(p.audN);if(N)N.effD=(N.effD||0)+(d-(S.avgD||4))*rep()/60}const I=interest(u,p);p.views++;p.dayViews++;p.att+=d;p.lastV=S.t;u.dayT+=d;u.dayV++;u.dayD+=d;
+function viewPost(u,p){const d=dwellOf(u,p);S.dayDw=(S.dayDw||0)+1;S.dayDwS=(S.dayDwS||0)+d;const _en=PICKN||p.audN;PICKN=0;if(_en){const N=bpNode(_en);if(N)N.effD=(N.effD||0)+(d-(S.avgD||4))*rep()/60}const I=interest(u,p);p.views++;p.dayViews++;p.att+=d;p.lastV=S.t;u.dayT+=d;u.dayV++;u.dayD+=d;
  const act=[];if(Math.random()<u.like*(.1+I*.6)*(p.tone==2?1.2:1)){p.likes++;act.push('лайк');(u.lk=u.lk||[]).unshift(p.id);u.lk.length>20&&u.lk.pop();(p.likers=p.likers||[]).push(u.id);p.likers.length>30&&p.likers.shift()}
  if(Math.random()<u.com*(.05+I*.3+(p.tone==0?.15:0)+u.argue*p.emo/300)){p.coms++;act.push('комментарий');if(p.comments.length<40)p.comments.push(mkComment(u,p))}
  if(Math.random()<u.share*(.03+I*.25)){p.shares++;act.push('репост');S.day.shares=(S.day.shares||0)+1}
@@ -62,12 +62,12 @@ function mkComment(u,p){const tone=clamp(p.tone+(Math.random()<u.argue?-1:0)+(Ma
 let RANK=[];
 function score(p){const age=(S.t-p.born)/TICK_DAY;return 2*Math.exp(-age/2)+Math.min(2,p.likes/(p.views+5)*6)+p.boost+p.pri}
 function rerank(){RANK=S.P.filter(p=>!p.blocked&&p.ruleOk!==null).map(p=>[score(p),p]).sort((a,b)=>b[0]-a[0]).slice(0,120).map(x=>x[1])}
-function pickFor(u){const L=RANK;if(!L.length)return null;let best=null,bs=-1e9;for(let i=0,lim=Math.min(L.length,BP_PICK?15:30);i<lim;i++){const p=L[i];let s=score(p)+Math.random()*1.2-i*.03+audBoost(u,p);if(s>bs){bs=s;best=p}}return best}
+function pickFor(u){const ip=injPick(u);if(ip)return ip;const L=RANK;if(!L.length)return null;let best=null,bs=-1e9;for(let i=0,lim=Math.min(L.length,BP_PICK?15:30);i<lim;i++){const p=L[i];let s=score(p)+Math.random()*1.2-i*.03+audBoost(u,p);if(s>bs){bs=s;best=p}}return best}
 // ---------- день ----------
 function tickUsers(){let att=0,views=0;const perf=S.perf;
  for(const u of S.U){if(u.gone)continue;if(Math.random()>u.v/TICK_DAY)continue;
   // одна сессия: человек смотрит посты, пока не кончится время сессии (не больше 12 «замеров»)
-  let left=u.sess*60*(.6+Math.random()*.8);let n=0;while(left>0&&n<12){const p=pickFor(u);if(!p)break;const d=viewPost(u,p);left-=d*8;att+=d;views++;n++}
+  runUser(u);let left=u.sess*60*(.6+Math.random()*.8);let n=0;while(left>0&&n<12){const p=pickFor(u);if(!p)break;const d=viewPost(u,p);left-=d*8;att+=d;views++;n++}
   const tm=u.sess*60*.9-left;u.dayTime=(u.dayTime||0)+Math.max(0,tm)}
  return {att,views}}
 function endDay(){const R=rep();let tsum=0,n=0,left=0;
@@ -94,7 +94,7 @@ function dateStr(t){const d=new Date(2000,0,1);d.setDate(d.getDate()+Math.floor(
 function timeStr(){const fr=(S.t%TICK_DAY)/TICK_DAY*24;return String(Math.floor(fr)).padStart(2,'0')+':'+String(Math.floor(fr%1*60)).padStart(2,'0')}
 // ---------- серверы, очереди, экономика ----------
 const capacity=()=>100*Math.pow(1.2,lvl('power'))*(S.perf);
-function sload(){const users=active()*.06;const rules=S.bp.nodes.length*S.P.length*.0008+(BP_PICK?S.bp.nodes.length*active()*.01:0)*(1-eff('ruleOpt'));const data=Object.values(S.data).filter(Boolean).length*active()*.02;return users+rules+data+S.queue.rules*.05+S.queue.posts*.2}
+function sload(){const users=active()*.06;const rules=S.bp.nodes.length*S.P.length*.0008+(BP_USER?S.bp.nodes.length*active()*.004:0)*(1-eff('ruleOpt'));const data=Object.values(S.data).filter(Boolean).length*active()*.02;return users+rules+data+S.queue.rules*.05+S.queue.posts*.2}
 function serverTick(){const cap=capacity(),L=sload();S.load=L/cap;const spare=Math.max(.15,cap/L);
  // обработка очередей пропорционально свободной мощности
  const rp=Math.ceil(30*Math.min(1.5,spare)*(1+lvl('power')*.2));const did=Math.min(S.queue.rules,rp);S.queue.rules-=did;S.recalcSpeed=rp;if(did)rulesWork(did);
@@ -117,4 +117,4 @@ function step(){if(S.paused)return;S.t++;
  S.day.att=(S.day.att||0)+att;S.day.views=(S.day.views||0)+r.views;S.day.inc=(S.day.inc||0)+ads+an;S.incNow=(S.incNow||0)*.9+(ads+an)*60*.1;
  ruleEffectTick();
  if(S.t%TICK_DAY==0)endDay();goalsTick()}
-function init10(){for(let i=0;i<100;i++)addUser();for(let i=0;i<60;i++){const p=mkPost(pk(S.U));p.born=-Math.floor(Math.random()*20)}S.queue.posts=0;rerank()}
+function init10(){SHOP.forEach(x=>{if(!x.lv)S.f[x.id]=1});for(let i=0;i<100;i++)addUser();for(let i=0;i<60;i++){const p=mkPost(pk(S.U));p.born=-Math.floor(Math.random()*20)}S.queue.posts=0;rerank()}

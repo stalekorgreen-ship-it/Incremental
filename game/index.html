@@ -224,7 +224,7 @@ const NC=CATS.length;
 // темы из справочника v8 → категории
 const T2C={0:[0],1:[0],2:[4],3:[4],4:[4],5:[3],6:[3],7:[3],8:[10],9:[2],10:[9],11:[2],12:[2],13:[2],14:[1],15:[8],16:[8],17:[8],18:[2],19:[9],20:[5],21:[5],22:[5],23:[7],24:[2],25:[5],26:[6],27:[6],28:[9],29:[4],30:[5],31:[5],32:[5],33:[5],34:[5],35:[5],36:[5],37:[5],38:[5],39:[1],40:[11],41:[11],42:[5],43:[2],44:[5],45:[8],46:[8],47:[8],48:[5],49:[5]};
 // ---------- состояние ----------
-const BASE10=()=>({v:10,t:0,m:20,f:{},lv:{},U:[],nid:0,pid:0,P:[],arch:[],bp:{nodes:[],nid:1},iv:[],news:[],ev:[],day:{},days:[],
+const BASE10=()=>({v:10,t:0,m:20,f:{},lv:{},U:[],nid:0,pid:0,P:[],arch:[],bp:{nodes:[],nid:1},know:{dict:{},fans:{}},iv:[],news:[],ev:[],day:{},days:[],
  queue:{rules:0,posts:0,feed:0,data:0},recalc:0,goals:{},wins:{},mails:[],data:{age:false,reg:false,int:false,beh:false,pref:false},dataQ:1,
  elecP:1,waterP:1,neg:0,perf:1,totals:{att:0,ads:0,an:0,cost:0},sel:null,osI:null});
 let S=BASE10();
@@ -260,7 +260,7 @@ const lemma=w=>FORM[w]||(w.length>5?w.slice(0,w.length-2):w);
 // ---------- поведение: просмотр публикации ----------
 function interest(u,p){let m=0;for(const c of p.cats)m=Math.max(m,u.it[c]/100);return m}
 function dwellOf(u,p){const I=interest(u,p);if(Math.random()<u.scroll*.6&&I<.25)return .5+Math.random();const base=p.media=='видео'?20:p.media=='фото'?8:Math.min(30,p.len/15);return Math.max(.5,base*(.25+I*1.3)*(1+p.emo/400)*(.7+Math.random()*.6))}
-function viewPost(u,p){const d=dwellOf(u,p);S.dayDw=(S.dayDw||0)+1;S.dayDwS=(S.dayDwS||0)+d;if(p.audN){const N=bpNode(p.audN);if(N)N.effD=(N.effD||0)+(d-(S.avgD||4))*rep()/60}const I=interest(u,p);p.views++;p.dayViews++;p.att+=d;p.lastV=S.t;u.dayT+=d;u.dayV++;u.dayD+=d;
+function viewPost(u,p){const d=dwellOf(u,p);S.dayDw=(S.dayDw||0)+1;S.dayDwS=(S.dayDwS||0)+d;const _en=PICKN||p.audN;PICKN=0;if(_en){const N=bpNode(_en);if(N)N.effD=(N.effD||0)+(d-(S.avgD||4))*rep()/60}const I=interest(u,p);p.views++;p.dayViews++;p.att+=d;p.lastV=S.t;u.dayT+=d;u.dayV++;u.dayD+=d;
  const act=[];if(Math.random()<u.like*(.1+I*.6)*(p.tone==2?1.2:1)){p.likes++;act.push('лайк');(u.lk=u.lk||[]).unshift(p.id);u.lk.length>20&&u.lk.pop();(p.likers=p.likers||[]).push(u.id);p.likers.length>30&&p.likers.shift()}
  if(Math.random()<u.com*(.05+I*.3+(p.tone==0?.15:0)+u.argue*p.emo/300)){p.coms++;act.push('комментарий');if(p.comments.length<40)p.comments.push(mkComment(u,p))}
  if(Math.random()<u.share*(.03+I*.25)){p.shares++;act.push('репост');S.day.shares=(S.day.shares||0)+1}
@@ -272,12 +272,12 @@ function mkComment(u,p){const tone=clamp(p.tone+(Math.random()<u.argue?-1:0)+(Ma
 let RANK=[];
 function score(p){const age=(S.t-p.born)/TICK_DAY;return 2*Math.exp(-age/2)+Math.min(2,p.likes/(p.views+5)*6)+p.boost+p.pri}
 function rerank(){RANK=S.P.filter(p=>!p.blocked&&p.ruleOk!==null).map(p=>[score(p),p]).sort((a,b)=>b[0]-a[0]).slice(0,120).map(x=>x[1])}
-function pickFor(u){const L=RANK;if(!L.length)return null;let best=null,bs=-1e9;for(let i=0,lim=Math.min(L.length,BP_PICK?15:30);i<lim;i++){const p=L[i];let s=score(p)+Math.random()*1.2-i*.03+audBoost(u,p);if(s>bs){bs=s;best=p}}return best}
+function pickFor(u){const ip=injPick(u);if(ip)return ip;const L=RANK;if(!L.length)return null;let best=null,bs=-1e9;for(let i=0,lim=Math.min(L.length,BP_PICK?15:30);i<lim;i++){const p=L[i];let s=score(p)+Math.random()*1.2-i*.03+audBoost(u,p);if(s>bs){bs=s;best=p}}return best}
 // ---------- день ----------
 function tickUsers(){let att=0,views=0;const perf=S.perf;
  for(const u of S.U){if(u.gone)continue;if(Math.random()>u.v/TICK_DAY)continue;
   // одна сессия: человек смотрит посты, пока не кончится время сессии (не больше 12 «замеров»)
-  let left=u.sess*60*(.6+Math.random()*.8);let n=0;while(left>0&&n<12){const p=pickFor(u);if(!p)break;const d=viewPost(u,p);left-=d*8;att+=d;views++;n++}
+  runUser(u);let left=u.sess*60*(.6+Math.random()*.8);let n=0;while(left>0&&n<12){const p=pickFor(u);if(!p)break;const d=viewPost(u,p);left-=d*8;att+=d;views++;n++}
   const tm=u.sess*60*.9-left;u.dayTime=(u.dayTime||0)+Math.max(0,tm)}
  return {att,views}}
 function endDay(){const R=rep();let tsum=0,n=0,left=0;
@@ -304,7 +304,7 @@ function dateStr(t){const d=new Date(2000,0,1);d.setDate(d.getDate()+Math.floor(
 function timeStr(){const fr=(S.t%TICK_DAY)/TICK_DAY*24;return String(Math.floor(fr)).padStart(2,'0')+':'+String(Math.floor(fr%1*60)).padStart(2,'0')}
 // ---------- серверы, очереди, экономика ----------
 const capacity=()=>100*Math.pow(1.2,lvl('power'))*(S.perf);
-function sload(){const users=active()*.06;const rules=S.bp.nodes.length*S.P.length*.0008+(BP_PICK?S.bp.nodes.length*active()*.01:0)*(1-eff('ruleOpt'));const data=Object.values(S.data).filter(Boolean).length*active()*.02;return users+rules+data+S.queue.rules*.05+S.queue.posts*.2}
+function sload(){const users=active()*.06;const rules=S.bp.nodes.length*S.P.length*.0008+(BP_USER?S.bp.nodes.length*active()*.004:0)*(1-eff('ruleOpt'));const data=Object.values(S.data).filter(Boolean).length*active()*.02;return users+rules+data+S.queue.rules*.05+S.queue.posts*.2}
 function serverTick(){const cap=capacity(),L=sload();S.load=L/cap;const spare=Math.max(.15,cap/L);
  // обработка очередей пропорционально свободной мощности
  const rp=Math.ceil(30*Math.min(1.5,spare)*(1+lvl('power')*.2));const did=Math.min(S.queue.rules,rp);S.queue.rules-=did;S.recalcSpeed=rp;if(did)rulesWork(did);
@@ -327,116 +327,103 @@ function step(){if(S.paused)return;S.t++;
  S.day.att=(S.day.att||0)+att;S.day.views=(S.day.views||0)+r.views;S.day.inc=(S.day.inc||0)+ads+an;S.incNow=(S.incNow||0)*.9+(ads+an)*60*.1;
  ruleEffectTick();
  if(S.t%TICK_DAY==0)endDay();goalsTick()}
-function init10(){for(let i=0;i<100;i++)addUser();for(let i=0;i<60;i++){const p=mkPost(pk(S.U));p.born=-Math.floor(Math.random()*20)}S.queue.posts=0;rerank()}
-// ===================== ЛЕНТА.EXE v10 — АЛГОРИТМ НА БЛУПРИНТАХ =====================
-// Схема = узлы + провода. События запускают поток, условия ветвят (да/нет), действия меняют судьбу поста.
-// g: ev — событие, cond — условие поста, ucond — условие пользователя (только в «Подборе»), flow — логика, act — действие с постом, uact — действие для пользователя
-const intOf=(u,p)=>{let m=0;for(const c of p.cats)m=Math.max(m,u.it[c]);return m};
-const NTL=[
-// --- события ---
-['ev_new','ev','Новый пост','срабатывает один раз, когда пост опубликован',0,'rules',[],null],
-['ev_check','ev','Ежедневная проверка','каждый день проходит по всем постам в ленте',30,'rules',[],null],
-['ev_arch','ev','Пост уходит в архив','пост забыли — можно вернуть его в алгоритм',200,'ev_check',[],null],
-['ev_pick','ev','Подбор для пользователя','каждый раз, когда человеку подбирается пост: условия про человека',450,'ev_check',[],null],
-// --- условия поста ---
-['c_word','cond','Содержит слово','с учётом словоформ',0,'rules',[['w','слово','text','']],(c,P)=>{const w=normW(P.w||'');return !!w&&(c.p.words.includes(w)||c.p.lem.includes(lemma(w)))}],
-['c_views','cond','Просмотров больше','',18,'rules',[['n','','num',100]],(c,P)=>c.p.views*rep()>+P.n],
-['c_likes','cond','Лайков больше','',40,'rules',[['n','','num',10]],(c,P)=>c.p.likes*rep()>+P.n],
-['c_coms','cond','Комментариев больше','',70,'c_likes',[['n','','num',5]],(c,P)=>c.p.coms*rep()>+P.n],
-['c_shares','cond','Репостов больше','',120,'c_likes',[['n','','num',3]],(c,P)=>c.p.shares*rep()>+P.n],
-['c_ctr','cond','Лайков на 100 просмотров больше','насколько пост нравится',150,'c_likes',[['n','','num',10]],(c,P)=>c.p.views>4&&c.p.likes/c.p.views*100>+P.n],
-['c_vel','cond','Просмотров за день больше','пост набирает обороты',160,'c_views',[['n','','num',50]],(c,P)=>c.p.dayViews*rep()>+P.n],
-['c_age','cond','Старше N дней','',90,'rules',[['n','','num',2]],(c,P)=>(S.t-c.p.born)/TICK_DAY>+P.n],
-['c_rand','cond','Случайно, N%','',80,'rules',[['n','','num',50]],(c,P)=>Math.random()*100<+P.n],
-['c_media','cond','Есть фото или видео','',110,'rules',[],c=>!!c.p.media],
-['c_video','cond','Это видео','',130,'c_media',[],c=>c.p.media=='видео'],
-['c_len','cond','Длиннее N знаков','',150,'rules',[['n','','num',120]],(c,P)=>c.p.len>+P.n],
-['c_cat','cond','Тематика','',170,'rules',[['c','','cat',0]],(c,P)=>c.p.cats.includes(+P.c)],
-['c_tone','cond','Тональность','',220,'c_cat',[['t','','tone',0]],(c,P)=>c.p.tone==+P.t],
-['c_emo','cond','Эмоциональность больше','',300,'c_tone',[['n','','num',60]],(c,P)=>c.p.emo>+P.n],
-['c_news','cond','Связан с новостью','пост о текущем событии',250,'c_word',[],c=>!!c.p.ev],
-['c_comtone','cond','Злых комментариев больше, %','',430,'c_coms',[['n','','num',40]],(c,P)=>{const n=c.p.comments.length;return n>=3&&c.p.comments.filter(x=>x.tone==0).length/n*100>+P.n}],
-['c_comact','cond','Комментариев в день больше','',460,'c_coms',[['n','','num',5]],(c,P)=>c.p.coms*rep()/Math.max(1,(S.t-c.p.born)/TICK_DAY)>+P.n],
-['c_auth','cond','Автор — новичок (меньше N дней)','',350,'c_age',[['n','','num',10]],(c,P)=>{const a=byId(c.p.au);return !!a&&(S.t-a.join)/TICK_DAY<+P.n}],
-['c_resent','cond','Переотправлен меньше N раз','',260,'a_resend',[['n','','num',2]],(c,P)=>(c.p.resent||0)<+P.n],
-// --- условия пользователя ---
-['u_int','ucond','Человеку интересна тема поста','интерес к тематике поста ≥ N',470,'ev_pick',[['n','','num',50]],(c,P)=>intOf(c.u,c.p)>=+P.n],
-['u_cat','ucond','Интерес человека к категории','',500,'ev_pick',[['c','','cat',0],['n','≥','num',50]],(c,P)=>c.u.it[+P.c]>=+P.n],
-['u_like','ucond','Лайкал то же, что лайкнувшие пост','похожие вкусы',560,'ev_pick',[],c=>likeMatch(c.u,c.p)],
-['u_age','ucond','Возраст человека','от и до',520,'ev_pick',[['a','от','num',14],['b','до','num',25]],(c,P)=>c.u.age>=+P.a&&c.u.age<=+P.b],
-['u_reg','ucond','Регион человека','',540,'ev_pick',[['r','','reg',0]],(c,P)=>c.u.reg==+P.r],
-['u_regau','ucond','Из одного региона с автором','',580,'u_reg',[],c=>{const a=byId(c.p.au);return !!a&&a.reg==c.u.reg}],
-['u_new','ucond','Новичок (меньше N дней)','',600,'ev_pick',[['n','','num',7]],(c,P)=>(S.t-c.u.join)/TICK_DAY<+P.n],
-['u_bored','ucond','Заходит всё реже','может скоро уйти',640,'u_new',[],c=>c.u.v<c.u.visits*.6],
-['u_seen','ucond','Уже видел этот пост','',620,'ev_pick',[],c=>c.u.hist.some(h=>h.p==c.p.id)],
-['u_argue','ucond','Любит спорить, ≥ N%','',680,'u_like',[['n','','num',40]],(c,P)=>c.u.argue*100>=+P.n],
-// --- логика ---
-['f_seq','flow','Последовательность','запускает обе ветки по очереди',140,'rules',[],null],
-['f_every','flow','Каждый N-й раз','пропускает дальше только каждый N-й проход',280,'f_seq',[['n','','num',3]],null],
-// --- действия с постом ---
-['a_boost','act','Повысить приоритет','+N к рейтингу поста',0,'rules',[['n','+','num',2]],(c,P)=>{c.m.boost+=+P.n;c.m.rc[c.nid]=(c.m.rc[c.nid]||0)+ +P.n}],
-['a_limit','act','Ограничить распространение','пост почти не показывается',0,'rules',[],c=>{c.m.lim=true;c.m.rc[c.nid]=-1}],
-['a_lower','act','Понизить приоритет','−N к рейтингу',45,'rules',[['n','−','num',2]],(c,P)=>{c.m.boost-=+P.n;c.m.rc[c.nid]=(c.m.rc[c.nid]||0)-+P.n}],
-['a_block','act','Заблокировать','пост исчезает из ленты',100,'a_limit',[],c=>{c.m.block=true}],
-['a_pin','act','Закрепить наверху на N дней','+5 к рейтингу на срок',190,'a_boost',[['n','','num',2]],(c,P)=>{c.m.pin=Math.max(c.m.pin||0,+P.n);c.m.rc[c.nid]=5}],
-['a_resend','act','Отправить заново в алгоритм','пост снова как новый: свежий и в начале ленты',230,'ev_check',[],c=>{c.m.resend=true}],
-['a_arch','act','Отправить в архив','',210,'ev_check',[],c=>{c.m.arch=true}],
-['a_aud_int','act','Показывать только тем, кому интересна тема','интерес к тематике поста ≥ N',400,'ev_check',[['n','≥','num',50]],(c,P)=>{c.m.aud.push({k:'int',n:+P.n,nid:c.nid})}],
-['a_aud_cat','act','Показывать только интересующимся категорией','',460,'a_aud_int',[['c','','cat',0],['n','≥','num',50]],(c,P)=>{c.m.aud.push({k:'cat',c:+P.c,n:+P.n,nid:c.nid})}],
-['a_aud_like','act','Показывать тем, кто лайкал то же','люди с такими же лайками, как у лайкнувших',480,'a_aud_int',[],c=>{c.m.aud.push({k:'like',nid:c.nid})}],
-['a_aud_reg','act','Показывать только региону автора','',420,'a_aud_int',[],c=>{c.m.aud.push({k:'reg',nid:c.nid})}],
-['a_aud_age','act','Показывать ровесникам автора','±N лет',440,'a_aud_int',[['n','±','num',5]],(c,P)=>{c.m.aud.push({k:'age',n:+P.n,nid:c.nid})}],
-// --- действия для пользователя ---
-['a_u_boost','uact','Поднять для этого человека','+N к рейтингу поста только для него',450,'ev_pick',[['n','+','num',3]],(c,P)=>{c.m.add+=+P.n}],
-['a_u_skip','uact','Не показывать этому человеку','',470,'ev_pick',[],c=>{c.m.skip=true}]];
-const NT={};NTL.forEach(([id,g,n,d,pr,req,p,run])=>NT[id]={id,g,n,d,pr,req,p,run});
-const NGN={ev:'События',cond:'Условия: пост',ucond:'Условия: человек',flow:'Логика',act:'Действия: пост',uact:'Действия: человек'};
-const ntOk=id=>NT[id].pr?has('m_'+id):has('rules');
-function BP_SHOP(){return NTL.filter(x=>x[4]).map(([id,g,n,d,pr,req])=>['m_'+id,'Модуль · '+NGN[g],n,d||'новый модуль для схемы',pr,req=='rules'?'rules':NT[req].pr?'m_'+req:'rules'])}
-const outsOf=N=>{const g=NT[N.t].g;return g=='cond'||g=='ucond'?['yes','no']:N.t=='f_seq'?['a','b']:['next']};
-const OUTN={yes:'да',no:'нет',a:'1',b:'2',next:'▶'};
+function init10(){SHOP.forEach(x=>{if(!x.lv)S.f[x.id]=1});for(let i=0;i<100;i++)addUser();for(let i=0;i<60;i++){const p=mkPost(pk(S.U));p.born=-Math.floor(Math.random()*20)}S.queue.posts=0;rerank()}
+// ===================== ЛЕНТА.EXE v10 — АЛГОРИТМ: ПОТОК ДАННЫХ =====================
+// Модули соединяются проводами с типами. Источник запускает поток, значения текут по проводам,
+// модуль-выход срабатывает, когда на всех его входах есть данные. Ни один модуль не делает всю работу сам.
+const DT={post:['Пост','#4cf'],text:['Текст','#fc4'],num:['Число','#8e8'],topic:['Тема','#f8c'],dict:['Словарь','#c9f'],fans:['Справочник','#f96'],user:['Пользователь','#6ff'],posts:['Список постов','#58f'],users:['Список людей','#2cb'],table:['Таблица','#fa0']};
+const PSTAT=[['likes','лайки'],['views','просмотры'],['coms','комментарии'],['shares','репосты'],['ret','время удержания, с'],['age','возраст, дней'],['ctr','лайков на 100 просмотров'],['len','длина текста']];
+const USTAT=[['age','возраст'],['visits','заходов в день'],['time','минут в день'],['days','дней на платформе'],['likes','лайков всего']];
+const pstat=(p,s)=>s=='likes'?p.likes*rep():s=='views'?p.views*rep():s=='coms'?p.coms*rep():s=='shares'?p.shares*rep():s=='ret'?(p.views?p.att/p.views:0):s=='age'?(S.t-p.born)/TICK_DAY:s=='ctr'?(p.views?p.likes/p.views*100:0):p.len;
+const ustat=(u,s)=>s=='age'?u.age:s=='visits'?u.v:s=='time'?(u.timeAvg||0):s=='days'?(S.t-u.join)/TICK_DAY:(u.lk||[]).length;
+function avgStat(s){const k='avg_'+s;if(S._avgT!=dayNo()){S._avg={};S._avgT=dayNo()}if(S._avg[k]==null){const L=S.P;S._avg[k]=L.length?L.reduce((a,p)=>a+pstat(p,s),0)/L.length:0}return S._avg[k]}
+const pp=id=>{const p=postById(id);return p&&S.P.includes(p)&&!p.blocked?p:null};
+// [id, группа, название, описание, входы, выходы, параметры, функция(входы,парам,контекст)→выходы]
+const DFL=[
+// --- источники ---
+['src_new','src','Пост в алгоритме','новый пост, один раз при публикации',[],[['post','Пост']],[],(I,P,c)=>[c.trig=='new'?c.p:null]],
+['src_feed','src','Пост в ленте','каждый пост в ленте, раз в день',[],[['post','Пост']],[],(I,P,c)=>[c.trig=='feed'?c.p:null]],
+['src_arch','src','Пост уходит в архив','его забыли — последний шанс',[],[['post','Пост']],[],(I,P,c)=>[c.trig=='arch'?c.p:null]],
+['src_user','src','Пользователь в сети','человек открыл соцсеть',[],[['user','ID юзера']],[],(I,P,c)=>[c.trig=='user'?c.u:null]],
+// --- данные ---
+['kn_dict','data','Словарь слов и тем','слова, которые ты изучил (окно «Словарь»)',[],[['dict','Словарь']],[],()=>[S.know.dict]],
+['kn_fans','data','Справочник любителей темы','кто какие темы лайкает',[],[['fans','Справочник']],[],()=>[S.know.fans]],
+['c_num','data','Число','',[],[['num','Число']],[['n','','num',10]],(I,P)=>[+P.n]],
+['avg','data','Взять среднее по ленте','среднее значение по всем постам',[],[['num','Информация']],[['s','','pstat','likes']],(I,P)=>[avgStat(P.s)]],
+// --- извлечение ---
+['ex_text','ext','Вытащить текст','',[['post','Пост']],[['text','Текст'],['post','Пост']],[],(I)=>[I[0].lem,I[0]]],
+['ex_stat','ext','Взять показатель поста','',[['post','Пост']],[['num','Число'],['post','Пост']],[['s','','pstat','likes']],(I,P)=>[pstat(I[0],P.s),I[0]]],
+['p_author','ext','Автор поста','',[['post','Пост']],[['user','Автор'],['post','Пост']],[],(I)=>[byId(I[0].au)||null,I[0]]],
+['u_stat','ext','Взять показатель человека','',[['user','Пользователь']],[['num','Число'],['user','Пользователь']],[['s','','ustat','age']],(I,P)=>[ustat(I[0],P.s),I[0]]],
+['u_likes','ext','Получить лайки пользователя','последние 20 лайкнутых постов',[['user','ID юзера']],[['posts','ID постов']],[],(I)=>[(I[0].lk||[]).slice()]],
+['who','ext','Найти взаимодействовавших с постами','кто ещё лайкнул эти посты',[['posts','ID постов']],[['table','Таблица']],[],(I,P,c)=>{const T={};for(const id of I[0]){const p=postById(id);if(p&&p.likers)for(const u of p.likers)if(!c.u||u!=c.u.id)T[u]=(T[u]||0)+1}return [T]}],
+['their_likes','ext','Их лайки','все посты, которые лайкнули эти люди',[['users','Люди']],[['posts','ID постов']],[],(I)=>{const s=new Set();for(const id of I[0]){const u=byId(id);if(u&&u.lk)u.lk.forEach(x=>s.add(x))}return [[...s]]}],
+// --- обработка ---
+['topic','proc','Определить тему','по словам из словаря; без знакомых слов — темы нет',[['text','Текст'],['dict','Словарь'],['post','Пост']],[['topic','Тема'],['post','Пост']],[],(I)=>{const v={};for(const w of I[0]){const c=I[1][w];if(c!=null)v[c]=(v[c]||0)+1}let b=null,bn=0;for(const k in v)if(v[k]>bn){bn=v[k];b=+k}if(b!=null)I[2].topic=b;return [b,I[2]]}],
+['topic_is','proc','Тема равна','',[['topic','Тема'],['post','Пост']],[['post','Да'],['post','Нет']],[['c','','cat',0]],(I,P)=>I[0]==+P.c?[I[1],null]:[null,I[1]]],
+['has_word','proc','Есть слово','с учётом словоформ',[['text','Текст'],['post','Пост']],[['post','Да'],['post','Нет']],[['w','','text','']],(I,P)=>{const w=lemma(normW(P.w||''));return w&&I[0].includes(w)?[I[1],null]:[null,I[1]]}],
+['cmp','proc','Сравнить с','А > Б → пост идёт в верхний выход',[['num','Число А'],['num','Число Б'],['post','Пост']],[['post','А > Б'],['post','А ≤ Б']],[],(I)=>I[0]>I[1]?[I[2],null]:[null,I[2]]],
+['cmp_u','proc','Сравнить (человек)','',[['num','Число А'],['num','Число Б'],['user','Пользователь']],[['user','А > Б'],['user','А ≤ Б']],[],(I)=>I[0]>I[1]?[I[2],null]:[null,I[2]]],
+['mul','proc','Умножить','',[['num','Число'],['num','Число']],[['num','Число']],[],(I)=>[I[0]*I[1]]],
+['every','proc','Каждые N','пропускает каждый N-й',[['post','Пост']],[['post','Пост']],[['n','','num',3]],(I,P,c,N)=>{N.cnt=(N.cnt||0)+1;return [N.cnt%Math.max(1,+P.n)?null:I[0]]}],
+['rand','proc','Случайно, N%','',[['post','Пост']],[['post','Да'],['post','Нет']],[['n','','num',50]],(I,P)=>Math.random()*100<+P.n?[I[0],null]:[null,I[0]]],
+['sim','proc','Рассчитать сходство пользователей','сколько общих лайков с каждым',[['user','Пользователь'],['users','Люди']],[['table','Таблица']],[],(I)=>{const a=new Set(I[0].lk||[]);const T={};for(const id of I[1]){const u=byId(id);if(!u||!u.lk)continue;let n=0;for(const x of u.lk)if(a.has(x))n++;if(n)T[id]=n}return [T]}],
+['sort','proc','Отсортировать по совпадению','таблица → список людей, самые похожие сверху',[['table','Таблица']],[['users','Люди']],[],(I)=>[Object.entries(I[0]).sort((a,b)=>b[1]-a[1]).map(x=>+x[0])]],
+['take_u','proc','Взять первых N людей','',[['users','Люди']],[['users','Люди']],[['n','','num',10]],(I,P)=>[I[0].slice(0,+P.n)]],
+['sort_p','proc','Отсортировать посты по','',[['posts','ID постов']],[['posts','ID постов']],[['s','','pstat','likes']],(I,P)=>[I[0].filter(pp).sort((a,b)=>pstat(postById(b),P.s)-pstat(postById(a),P.s))]],
+['take_p','proc','Взять первые N постов','',[['posts','ID постов']],[['posts','ID постов']],[['n','','num',5]],(I,P)=>[I[0].slice(0,+P.n)]],
+['unseen','proc','Убрать уже увиденное','',[['user','Пользователь'],['posts','ID постов']],[['posts','ID постов']],[],(I)=>{const s=new Set(I[0].hist.slice(0,60).map(h=>h.p));return [I[1].filter(id=>!s.has(id)&&pp(id))]}],
+['tmp','proc','Составить временный список','копит посты за день, отдаёт список',[['post','Пост']],[['posts','ID постов']],[],(I,P,c,N)=>{if(N._d!=dayNo()){N._d=dayNo();N._l=[]}if(!N._l.includes(I[0].id))N._l.push(I[0].id);N._l=N._l.slice(-50);return [N._l.slice()]}],
+// --- выходы ---
+['o_alg','out','Отправить в алгоритм','пост снова как новый',[['post','Пост']],[],[],(I,P,c)=>{c.m.resend=true;return 'отправлен заново'}],
+['o_arch','out','Отправить в архив','',[['post','Пост']],[],[],(I,P,c)=>{c.m.arch=true;return 'в архив'}],
+['o_up','out','Поднять в ленте','',[['post','Пост']],[],[['n','+','num',2]],(I,P,c)=>{c.m.boost+=+P.n;c.m.rc[c.nid]=(c.m.rc[c.nid]||0)+ +P.n;return '+'+P.n}],
+['o_down','out','Опустить в ленте','',[['post','Пост']],[],[['n','−','num',2]],(I,P,c)=>{c.m.boost-=+P.n;return '−'+P.n}],
+['o_block','out','Заблокировать показ','',[['post','Пост']],[],[],(I,P,c)=>{c.m.block=true;return 'заблокирован'}],
+['o_fans','out','Отправить пост любителям темы','поднимает пост для тех, кто в справочнике, остальным — ниже',[['post','Пост'],['topic','Тема'],['fans','Справочник']],[],[],(I,P,c)=>{c.m.fan=I[1];c.m.fanN=c.nid;return 'любителям «'+CATS[I[1]]+'» ('+Object.keys(I[2][I[1]]||{}).length+' чел.)'}],
+['o_show','out','Показать пользователю','эти посты пойдут ему первыми',[['user','Пользователь'],['posts','ID постов']],[],[],(I,P,c)=>{c.m.inj=I[1].filter(pp).slice(0,10);c.m.injN=c.nid;return c.m.inj.length+' постов'}],
+['o_learnf','out','Пополнить справочник','лайкнувшие пост записываются в любители темы',[['post','Пост'],['topic','Тема']],[],[],(I,P,c)=>{if(c.dry)return 'записал бы '+(I[0].likers||[]).length;const F=S.know.fans[I[1]]=S.know.fans[I[1]]||{};for(const u of (I[0].likers||[]))F[u]=1;return 'записано '+(I[0].likers||[]).length}],
+['o_learnd','out','Изучить слова','незнакомые слова поста записываются в словарь под этой темой',[['text','Текст'],['topic','Тема']],[],[],(I,P,c)=>{let n=0;for(const w of I[0])if(w.length>=4&&S.know.dict[w]==null){if(!c.dry)S.know.dict[w]=I[1];n++}return (c.dry?'изучил бы ':'изучено ')+n}]];
+const NT={};DFL.forEach(([id,g,n,d,ins,outs,p,f])=>NT[id]={id,g,n,d,ins,outs,p,f});
+const NGN={src:'Источники',data:'Данные',ext:'Извлечение',proc:'Обработка',out:'Выходы'};
+const ntOk=()=>true;function BP_SHOP(){return []}
 // ---------- выполнение ----------
 const bpNode=id=>S.bp.nodes.find(n=>n.id==id);
-let BP_PICK=false;
-function bpIndex(){BP_PICK=S.bp.nodes.some(n=>n.t=='ev_pick'&&n.o.next)}
-function walk(id,c,d){if(d>40||c.steps++>200)return;const N=bpNode(id);if(!N)return;const T=NT[N.t];if(!ntOk(N.t))return;N.hits=(N.hits||0)+1;if(c.path)c.path.push(N.id);
- if(T.g=='cond'||T.g=='ucond'){if(T.g=='ucond'&&!c.u)return;walk(N.o[T.run(c,N.p)?'yes':'no'],c,d+1);return}
- if(N.t=='f_seq'){walk(N.o.a,c,d+1);walk(N.o.b,c,d+1);return}
- if(N.t=='f_every'){N.cnt=(N.cnt||0)+1;if(N.cnt%Math.max(1,+N.p.n))return;walk(N.o.next,c,d+1);return}
- if(T.g=='act'&&!c.u||T.g=='uact'&&c.u){c.nid=N.id;T.run(c,N.p)}walk(N.o.next,c,d+1)}
-function runEv(t,c){for(const N of S.bp.nodes)if(N.t==t&&ntOk(t)){N.hits=(N.hits||0)+1;walk(N.o.next,c,0)}}
-const newM=()=>({boost:0,lim:false,block:false,aud:[],rc:{},pin:0,resend:false,arch:false});
-function applyM(p,m,ev,path){if(m.pin)p.pinUntil=S.t+m.pin*TICK_DAY;const pin=p.pinUntil>S.t?5:0;
- p.boost=m.lim?-8:m.boost+pin;p.ruleLim=m.lim;p.rc=m.rc;if(m.block&&!p.blocked){p.blocked=true;p.autoBlock=true}
- p.audF=m.aud;p.audN=m.aud.length?m.aud[0].nid:null;if(m.aud.some(a=>a.k=='like'))p.lset=likeSet(p);
- if(path&&path.length>1){p.log.unshift({ev,path:path.slice(0,14),t:S.t});p.log.length=Math.min(6,p.log.length)}}
-function runPost(p,first){const m=newM();const c={p,m,steps:0,path:[]};if(first)runEv('ev_new',c);else Object.assign(m,JSON.parse(JSON.stringify(p.mNew||newM())));
- if(first)p.mNew=JSON.parse(JSON.stringify(m));const pathN=c.path.length;runEv('ev_check',c);applyM(p,m,first?'Новый пост':'Проверка',c.path);p.ruleOk=true;
- if(m.resend)resendPost(p);if(m.arch)TOARCH.push(p)}
+let BP_PICK=false,BP_USER=false,PICKN=0;
+function bpIndex(){BP_USER=S.bp.nodes.some(n=>n.t=='src_user');for(const N of S.bp.nodes)N.in=N.in||[]}
+function evalN(N,c){if(c.memo.has(N.id))return c.memo.get(N.id);c.memo.set(N.id,[]);const T=NT[N.t];const I=T.ins.map((x,i)=>{const w=N.in[i];if(!w)return null;const A=bpNode(w.n);if(!A)return null;const v=evalN(A,c)[w.o];return v===undefined?null:v});
+ let out;if(I.some(v=>v==null))out=T.outs.map(()=>null);else{c.nid=N.id;out=T.f(I,N.p,c,N)}if(out.some(v=>v!=null)){if(!c.dry)N.hits=(N.hits||0)+1;if(c.trace)c.trace.push({n:N.id,v:out})}c.memo.set(N.id,out);return out}
+function runTrig(trig,c){c.trig=trig;c.memo=new Map();c.m=c.m||newM();for(const N of S.bp.nodes){const T=NT[N.t];if(T.g!='out')continue;const I=T.ins.map((x,i)=>{const w=N.in&&N.in[i];if(!w)return null;const A=bpNode(w.n);return A?evalN(A,c)[w.o]:null});
+ if(I.some(v=>v==null))continue;c.nid=N.id;const r=T.f(I,N.p,c,N);if(!c.dry)N.hits=(N.hits||0)+1;if(c.trace)c.trace.push({n:N.id,v:[r],out:1});if(c.path)c.path.push(N.id)}return c}
+const newM=()=>({boost:0,block:false,rc:{},resend:false,arch:false,fan:null,inj:null});
+function applyM(p,m,ev,path){p.boost=m.boost+(p.bNew||0);p.rc=m.rc;if(m.block&&!p.blocked){p.blocked=true;p.autoBlock=true}if(m.fan!=null){p.fanCat=m.fan;p.audN=m.fanN}
+ if(path&&path.length){p.log.unshift({ev,path:path.slice(0,10),t:S.t});p.log.length=Math.min(6,p.log.length)}}
+function runPost(p,first){const c=runTrig(first?'new':'feed',{p,steps:0,path:[]});const m=c.m;if(first)p.bNew=m.boost,p.boost=0;applyM(p,m,first?'Новый пост':'Проверка',c.path);p.ruleOk=true;if(m.resend)resendPost(p);if(m.arch)TOARCH.push(p)}
 let TOARCH=[],RCUR=0;
 function requeue(){bpIndex();S.queue.rules=S.P.length;RCUR=0;S.recalcTotal=S.P.length}
 function rulesWork(n){for(let i=0;i<n;i++){if(!S.P.length)break;RCUR=RCUR%S.P.length;runPost(S.P[RCUR++],false)}flushArch()}
 function flushArch(){for(const p of TOARCH)if(S.P.includes(p))archive(p);TOARCH=[]}
-function newPostsToQueue(){if(!S.bp.nodes.length){S.P.forEach(p=>{if(!p.ruleOk)p.ruleOk=true});return}
- for(const p of S.P)if(!p.ruleOk)runPost(p,true);flushArch();
- if(S.t%TICK_DAY==0&&!S.queue.rules&&S.bp.nodes.some(n=>n.t=='ev_check'))requeue()}
+function newPostsToQueue(){if(!S.bp.nodes.length){S.P.forEach(p=>{if(!p.ruleOk)p.ruleOk=true});return}for(const p of S.P)if(!p.ruleOk)runPost(p,true);flushArch();
+ if(S.t%TICK_DAY==0&&!S.queue.rules&&S.bp.nodes.some(n=>n.t=='src_feed'))requeue()}
 function resendPost(p){p.born=S.t;p.lastV=S.t;p.dayViews=0;p.resent=(p.resent||0)+1}
-function bpArchive(p){if(!S.bp.nodes.some(n=>n.t=='ev_arch'))return false;const m=newM();const c={p,m,steps:0,path:[]};runEv('ev_arch',c);if(m.resend){applyM(p,m,'Уход в архив',c.path);resendPost(p);return true}return false}
-// ---------- аудитория ----------
-function likeSet(p){const s=new Set();for(const id of (p.likers||[])){const u=byId(id);if(u&&u.lk)for(const x of u.lk)if(x!=p.id)s.add(x)}return s}
-function likeMatch(u,p){if(!u.lk||!u.lk.length)return false;if(!p.lset||p._lsT!=dayNo()){p.lset=likeSet(p);p._lsT=dayNo()}for(const x of u.lk)if(p.lset.has(x))return true;return false}
-function audOk(u,p,a){if(a.k=='int')return intOf(u,p)>=a.n;if(a.k=='cat')return u.it[a.c]>=a.n;if(a.k=='like')return likeMatch(u,p);const au=byId(p.au);if(!au)return true;if(a.k=='reg')return u.reg==au.reg;if(a.k=='age')return Math.abs(u.age-au.age)<=a.n;return true}
-function audBoost(u,p){let s=0;if(p.audF&&p.audF.length)for(const a of p.audF)if(!audOk(u,p,a))return -50;
- if(BP_PICK){const m={add:0,skip:false};runEv('ev_pick',{p,u,m,steps:0});if(m.skip)return -50;s+=m.add}return s}
-// ---------- эффект модулей: добавленные минуты внимания ----------
+function bpArchive(p){if(!S.bp.nodes.some(n=>n.t=='src_arch'))return false;const c=runTrig('arch',{p,path:[]});if(c.m.resend){applyM(p,c.m,'Уход в архив',c.path);resendPost(p);return true}return false}
+function runUser(u){if(!BP_USER)return;const c=runTrig('user',{u});if(c.m.inj){u.inj=c.m.inj;u.injN=c.m.injN}}
+// ---------- влияние на показы ----------
+function injPick(u){while(u.inj&&u.inj.length){const p=pp(u.inj.shift());if(p){PICKN=u.injN;return p}}return null}
+function audBoost(u,p){if(p.fanCat!=null){const F=S.know.fans[p.fanCat];return F&&F[u.id]?3:-1.5}return 0}
 function ruleEffectTick(){if(!S.bp.nodes.length)return;for(const p of S.P){if(!p.rc)continue;const now=p.att-(p.attPrev||0);p.attPrev=p.att;if(!now)continue;
- for(const id in p.rc){const N=bpNode(+id);if(!N)continue;const v=p.rc[id];if(v>0){const sc=Math.max(.5,score(p));N.effD=(N.effD||0)+now*rep()/60*Math.min(1,v/sc)}}}
- // ограниченные посты: сколько внимания у них «отняли» (их показывают другим постам — считаем как ноль)
-}
+ for(const id in p.rc){const N=bpNode(+id);if(!N)continue;const v=p.rc[id];if(v>0){const sc=Math.max(.5,score(p));N.effD=(N.effD||0)+now*rep()/60*Math.min(1,v/sc)}}}}
 // ---------- правка схемы ----------
-function bpAdd(t,x,y){const N={id:S.bp.nid++,t,x:Math.round(x),y:Math.round(y),p:{},o:{},hits:0,eff7:[],effD:0};for(const[k,,ty,def]of NT[t].p)N.p[k]=def;S.bp.nodes.push(N);requeue();return N}
-function bpDel(id){S.bp.nodes=S.bp.nodes.filter(n=>n.id!=id);for(const n of S.bp.nodes)for(const k in n.o)if(n.o[k]==id)delete n.o[k];requeue()}
-function bpLink(a,o,b){const A=bpNode(a);if(!A||a==b||NT[bpNode(b).t].g=='ev')return false;A.o[o]=b;requeue();return true}
+function bpAdd(t,x,y){const N={id:S.bp.nid++,t,x:Math.round(x),y:Math.round(y),p:{},in:[],hits:0,eff7:[],effD:0};for(const[k,,ty,def]of NT[t].p)N.p[k]=def;S.bp.nodes.push(N);requeue();return N}
+function bpDel(id){S.bp.nodes=S.bp.nodes.filter(n=>n.id!=id);for(const n of S.bp.nodes)n.in=n.in.map(w=>w&&w.n==id?null:w);requeue()}
+function bpLink(a,o,b,i){const A=bpNode(a),Bn=bpNode(b);if(!A||!Bn||a==b)return 'нельзя соединить модуль сам с собой';const ta=NT[A.t].outs[o][0],tb=NT[Bn.t].ins[i][0];if(ta!=tb)return 'типы не совпадают: '+DT[ta][0]+' → '+DT[tb][0];Bn.in[i]={n:a,o};requeue();return ''}
+// ---------- словарь: игрок изучает слова сам, потом может автоматизировать модулем «Изучить слова» ----------
+function unknownWords(n){const C={};for(const p of S.P)for(const w of p.lem)if(w.length>=4&&S.know.dict[w]==null)C[w]=(C[w]||0)+1;return Object.entries(C).sort((a,b)=>b[1]-a[1]).slice(0,n)}
+function wordHint(w){const C={};for(const p of S.P)if(p.lem.includes(w))for(const c of p.cats)C[c]=(C[c]||0)+1;return Object.entries(C).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>+x[0])}
+// ---------- готовые стартовые схемы (для теста) ----------
+function bpStarter(){if(S.bp.nodes.length)return;const L=(a,o,b,i)=>bpLink(a.id,o,b.id,i);
+ const s=bpAdd('src_new',20,40),t=bpAdd('ex_text',250,30),d=bpAdd('kn_dict',250,190),tp=bpAdd('topic',500,60),fa=bpAdd('kn_fans',500,250),of=bpAdd('o_fans',780,60);L(s,0,t,0);L(t,0,tp,0);L(d,0,tp,1);L(t,1,tp,2);L(tp,1,of,0);L(tp,0,of,1);L(fa,0,of,2);
+ const f=bpAdd('src_feed',20,400),st=bpAdd('ex_stat',250,390),av=bpAdd('avg',250,540),cm=bpAdd('cmp',500,420),up=bpAdd('o_up',780,380),ar=bpAdd('o_down',780,520);st.p.s='ret';av.p.s='ret';L(f,0,st,0);L(st,0,cm,0);L(av,0,cm,1);L(st,1,cm,2);L(cm,0,up,0);L(cm,1,ar,0)}
 // ===================== ЛЕНТА.EXE v10 — ПРАВИЛА, ПОИСК, СОБЫТИЯ, МАГАЗИН =====================
 const eff=k=>{let s=0;for(const it of SHOP){if(it.lv){const n=lvl(it.id);if(n&&it.ef[k])s+=it.ef[k]*n}else if(has(it.id)&&it.ef&&it.ef[k])s+=it.ef[k]}return s};
 // ---------- ручное вмешательство ----------
@@ -516,7 +503,7 @@ const shopOk=it=>it.lv?(it.id=='power'||has('rules'))&&(it.id!='dataQ'||has('ana
 function buy(id){const it=SHOP.find(x=>x.id==id);if(!it||!shopOk(it))return false;const c=priceOf(it);if(S.m<c)return false;S.m-=c;if(it.lv)S.lv[id]=lvl(id)+1;else S.f[id]=1;
  if(id=='analytics'){S.data.age=true;S.data.reg=true}return true}
 // ---------- вехи ----------
-const GOALS=[['u150','150 пользователей',()=>active()*rep()>=150],['r1','Первая схема: событие → действие',()=>S.bp.nodes.some(n=>NT[n.t].g=='act'&&n.hits)],['e500','Модуль с эффектом +500 мин за неделю',()=>S.bp.nodes.some(n=>(n.eff7||[]).reduce((a,b)=>a+b,0)>=500)],
+const GOALS=[['u150','150 пользователей',()=>active()*rep()>=150],['r1','Первая схема: событие → действие',()=>S.bp.nodes.some(n=>NT[n.t].g=='out'&&n.hits)],['e500','Модуль с эффектом +500 мин за неделю',()=>S.bp.nodes.some(n=>(n.eff7||[]).reduce((a,b)=>a+b,0)>=500)],
  ['u500','500 пользователей',()=>active()*rep()>=500],['sup','Подави событие до его конца',()=>(S.suppressed||0)>0],['u2k','2 000 пользователей',()=>active()*rep()>=2000],['t30','Время в соцсети 30 мин в день',()=>{const d=S.days[S.days.length-1];return d&&d.timeAvg>=30}],
  ['u10k','10 000 пользователей',()=>active()*rep()>=1e4],['an1k','Доход аналитики $1 000 в день',()=>analyticsIncome()>=1000],['u50k','50 000 пользователей',()=>active()*rep()>=5e4],['u100k','100 000 пользователей',()=>active()*rep()>=1e5]];
 function goalsTick(){if(S.t%5)return;for(const[id,n,ok]of GOALS)if(!S.goals[id]&&ok()){S.goals[id]=S.t;if(typeof toast=='function')toast('🎯 Веха: '+n)}}
@@ -546,24 +533,28 @@ function postDetail(p){if(!p)return '<div class="lbl">Нажми на пост, 
  if(has('comments'))h+='<div class="lbl"><b>Комментарии ('+p.comments.length+'):</b>'+p.comments.slice(-5).map(c=>'<div>'+['😠','😐','🙂'][c.tone]+' <b>'+esc(c.n)+':</b> '+esc(c.txt)+'</div>').join('')+'</div>';
  return h+'</fieldset>'}
 // ---------- редактор блупринтов ----------
-let PEND=null,BPD=null;const NW=190;
-const pinIn=N=>NT[N.t].g=='ev'?'':'<i class="pin pin-in" data-a="bpin" data-n="'+N.id+'"></i>';
+let PEND=null,BPD=null,TEST=null;const NW=200;
+const pinC=t=>'style="border-color:'+DT[t][1]+'"';
 function paramHTML(N){return NT[N.t].p.map(([k,lab,ty])=>{const v=N.p[k];const at='data-bp="'+N.id+'" data-k="'+k+'"';
- const inp=ty=='text'?'<input '+at+' value="'+esc(v)+'" style="width:100px">':ty=='num'?'<input type="number" '+at+' value="'+esc(v)+'" style="width:60px">':ty=='cat'?'<select '+at+'>'+opt(CATS.map((x,j)=>[j,x]),v)+'</select>':ty=='tone'?'<select '+at+'>'+opt(TONE.map((x,j)=>[j,x]),v)+'</select>':'<select '+at+'>'+opt(REGIONS.map((x,j)=>[j,x]),v)+'</select>';
+ const inp=ty=='text'?'<input '+at+' value="'+esc(v)+'" style="width:100px">':ty=='num'?'<input type="number" '+at+' value="'+esc(v)+'" style="width:60px">':ty=='cat'?'<select '+at+'>'+opt(CATS.map((x,j)=>[j,x]),v)+'</select>':ty=='pstat'?'<select '+at+'>'+opt(PSTAT,v)+'</select>':ty=='ustat'?'<select '+at+'>'+opt(USTAT,v)+'</select>':'';
  return '<div>'+(lab?lab+' ':'')+inp+'</div>'}).join('')}
-function nodeHTML(N){const T=NT[N.t];const e7=(N.eff7||[]).reduce((a,b)=>a+b,0)+(N.effD||0);const ok=ntOk(N.t);
- return '<div class="bpn g-'+T.g+(ok?'':' lock')+'" id="bpn'+N.id+'" style="left:'+N.x+'px;top:'+N.y+'px;width:'+NW+'px">'+pinIn(N)+'<div class="bph" data-nd="'+N.id+'"><span>'+T.n+'</span><b data-a="bpdel" data-n="'+N.id+'">×</b></div>'+
- '<div class="bpb">'+paramHTML(N)+'<div class="lbl">'+fc(N.hits||0)+' проходов'+(has('r_effect')||1?((T.g=='act'||T.g=='uact')&&e7?' · <b class="'+(e7>0?'up':'dn')+'">'+(e7>0?'+':'')+f(e7)+' мин/7дн</b>':''):'')+'</div></div>'+
- '<div class="bpo">'+outsOf(N).map(o=>'<div class="bpor">'+(o=='next'?'':OUTN[o])+' <i class="pin pin-out'+(N.o[o]?' on':'')+(PEND&&PEND.n==N.id&&PEND.o==o?' pend':'')+'" data-a="bpout" data-n="'+N.id+'" data-o="'+o+'"></i></div>').join('')+'</div></div>'}
-function bpWires(){const c=$('bpc'),sv=$('bpsvg');if(!c||!sv)return;const r0=c.getBoundingClientRect();let h='';
- for(const N of S.bp.nodes)for(const o in N.o){const a=c.querySelector('[data-a="bpout"][data-n="'+N.id+'"][data-o="'+o+'"]'),b=c.querySelector('#bpn'+N.o[o]+' .pin-in');if(!a||!b)continue;
-  const A=a.getBoundingClientRect(),Bb=b.getBoundingClientRect();const x1=A.left+5-r0.left,y1=A.top+5-r0.top,x2=Bb.left+5-r0.left,y2=Bb.top+5-r0.top,dx=Math.max(40,Math.abs(x2-x1)/2);
-  h+='<path d="M'+x1+' '+y1+' C'+(x1+dx)+' '+y1+' '+(x2-dx)+' '+y2+' '+x2+' '+y2+'" class="w-'+o+'"/>'}sv.innerHTML=h}
-function bpPalette(){return Object.keys(NGN).map(g=>{const L=NTL.filter(x=>x[1]==g&&ntOk(x[0]));return L.length?'<div class="sep">'+NGN[g]+'</div>'+L.map(x=>'<div class="pal g-'+g+'" data-a="bpadd" data-t="'+x[0]+'" title="'+esc(x[3])+'">'+x[2]+'</div>').join(''):''}).join('')+
- '<div class="lbl" style="margin-top:6px">Новые модули — в Магазине.</div>'}
-function bpWin(){const q=S.queue.rules;return '<div class="row"><b>Схема алгоритма</b><span class="lbl">'+(PEND?'выбери вход другого модуля (кружок слева) — или кликни по пустому месту для отмены':'кликни выход ● и вход ○, чтобы соединить. Модули тянутся за заголовок')+'</span>'+(q?'<span class="lbl">пересчёт: '+q+' постов</span>':'')+'</div>'+
- '<div class="bpwrap2"><div class="bppal keep">'+bpPalette()+'</div><div class="bpwrap keep" id="bpwrap"><div id="bpc" class="bpc" data-a="bpbg"><svg id="bpsvg" class="bpsvg"></svg>'+S.bp.nodes.map(nodeHTML).join('')+
- (S.bp.nodes.length?'':'<div class="lbl" style="position:absolute;left:20px;top:20px">Начни с события «Новый пост» → условие «Содержит слово» → действие «Повысить приоритет».</div>')+'</div></div></div>'}
+function valTxt(v){if(v==null)return '—';if(Array.isArray(v))return v.length&&typeof v[0]=='string'?'«'+v.slice(0,4).join(' ')+'…»':v.length+' шт.';if(typeof v=='number')return Number.isInteger(v)&&v<NC&&false?CATS[v]:(+v.toFixed(1)).toLocaleString('ru');if(typeof v=='string')return v;if(v.txt)return 'пост «'+v.txt.slice(0,18)+'…»';if(v.n&&v.it)return v.n;return Object.keys(v).length+' записей'}
+function testVal(N){if(!TEST)return null;const k=TEST.trace.slice(0,TEST.step).filter(x=>x.n==N.id).pop();return k||null}
+function nodeHTML(N){const T=NT[N.t];const e7=(N.eff7||[]).reduce((a,b)=>a+b,0)+(N.effD||0);const tv=testVal(N);const rows=Math.max(T.ins.length,T.outs.length);let r='';
+ for(let i=0;i<rows;i++){const a=T.ins[i],b=T.outs[i];r+='<div class="bpr"><span>'+(a?'<i class="pin pin-in'+(N.in&&N.in[i]?' on':'')+'" '+pinC(a[0])+' data-a="din" data-n="'+N.id+'" data-i="'+i+'"></i>'+a[1]:'')+'</span><span>'+(b?(tv&&!tv.out&&tv.v[i]!=null?'<em>'+esc(T.id=='topic'&&i==0?CATS[tv.v[i]]:valTxt(tv.v[i]))+'</em> ':'')+b[1]+'<i class="pin pin-out'+(PEND&&PEND.n==N.id&&PEND.o==i?' pend':'')+'" '+pinC(b[0])+' data-a="dout" data-n="'+N.id+'" data-o="'+i+'"></i>':'')+'</span></div>'}
+ return '<div class="bpn g-'+T.g+(tv?' lit':'')+'" id="bpn'+N.id+'" style="left:'+N.x+'px;top:'+N.y+'px;width:'+NW+'px"><div class="bph" data-nd="'+N.id+'" title="'+esc(T.d)+'"><span>'+T.n+'</span><b data-a="bpdel" data-n="'+N.id+'">×</b></div>'+
+ '<div class="bpb">'+paramHTML(N)+'</div>'+r+'<div class="bpb lbl">'+(tv&&tv.out?'<b class="up">→ '+esc(tv.v[0])+'</b><br>':'')+fc(N.hits||0)+' срабатываний'+(e7?' · <b class="'+(e7>0?'up':'dn')+'">'+(e7>0?'+':'')+f(e7)+' мин/7дн</b>':'')+'</div></div>'}
+function bpWires(){const c=$('bpc'),sv=$('bpsvg');if(!c||!sv)return;const r0=c.getBoundingClientRect();let h='';const lit=TEST?new Set(TEST.trace.slice(0,TEST.step).map(x=>x.n)):null;
+ for(const N of S.bp.nodes)(N.in||[]).forEach((w,i)=>{if(!w)return;const a=c.querySelector('[data-a="dout"][data-n="'+w.n+'"][data-o="'+w.o+'"]'),b=c.querySelector('[data-a="din"][data-n="'+N.id+'"][data-i="'+i+'"]');if(!a||!b)return;
+  const A=a.getBoundingClientRect(),Bb=b.getBoundingClientRect();const x1=A.left+5-r0.left,y1=A.top+5-r0.top,x2=Bb.left+5-r0.left,y2=Bb.top+5-r0.top,dx=Math.max(40,Math.abs(x2-x1)/2);const A0=bpNode(w.n);const ty=NT[A0.t].outs[w.o][0];
+  h+='<path d="M'+x1+' '+y1+' C'+(x1+dx)+' '+y1+' '+(x2-dx)+' '+y2+' '+x2+' '+y2+'" style="stroke:'+DT[ty][1]+';stroke-opacity:'+(lit&&!lit.has(w.n)?.25:1)+';stroke-width:'+(lit&&lit.has(w.n)?4:2.5)+'px"/>'});sv.innerHTML=h}
+function bpPalette(){return Object.keys(NGN).map(g=>'<div class="sep">'+NGN[g]+'</div>'+DFL.filter(x=>x[1]==g).map(x=>'<div class="pal g-'+g+'" data-a="bpadd" data-t="'+x[0]+'" title="'+esc(x[3])+'">'+x[2]+'</div>').join('')).join('')+
+ '<div class="sep">Типы данных</div>'+Object.values(DT).map(([n,c])=>'<div class="lbl"><i class="pin" style="border-color:'+c+';background:'+c+'"></i> '+n+'</div>').join('')}
+function bpTest(kind){const c={dry:true,trace:[],path:[],m:newM()};if(kind=='user'){const L=S.U.filter(u=>!u.gone&&u.lk&&u.lk.length);c.u=pk(L.length?L:S.U.filter(u=>!u.gone))}else c.p=pk(S.P);
+ runTrig(kind,c);TEST={kind,trace:c.trace,step:0,what:kind=='user'?'человек '+c.u.n:'пост «'+c.p.txt.slice(0,40)+'…»'};}
+function bpWin(){const q=S.queue.rules;return '<div class="row">'+B('▶ Тест: новый пост','bptest','data-k="new"')+B('▶ Тест: пост в ленте','bptest','data-k="feed"')+B('▶ Тест: пользователь','bptest','data-k="user"')+
+ (TEST?B('⏭ Следующий шаг','bpstep')+B('⏩ Всё','bpall')+B('↺ Сброс','bpreset')+'<span class="lbl">'+esc(TEST.what)+' · шаг '+TEST.step+'/'+TEST.trace.length+'</span>':'<span class="lbl">'+(PEND?'теперь кликни вход того же цвета':'выход ● → вход ●; провода только между одинаковыми типами')+(q?' · пересчёт: '+q+' постов':'')+'</span>')+'</div>'+
+ '<div class="bpwrap2"><div class="bppal keep">'+bpPalette()+'</div><div class="bpwrap keep" id="bpwrap"><div id="bpc" class="bpc" data-a="bpbg"><svg id="bpsvg" class="bpsvg"></svg>'+S.bp.nodes.map(nodeHTML).join('')+'</div></div></div>'}
 // ---------- окна ----------
 const shopBtn=it=>{const p=priceOf(it);return B('$'+f(p),'buy','data-id="'+it.id+'"'+(S.m>=p?'':' disabled'))};
 const WIN={
@@ -612,6 +603,11 @@ const WIN={
  shop:{t:'Магазин',i:'tree',w:480,h:580,live:1,r(){const L=SHOP.filter(shopOk);const one=L.filter(x=>!x.lv),mul=L.filter(x=>x.lv);
   return '<fieldset><legend>Новые функции</legend>'+(one.length?one.map(t=>'<div class="node"><div><b>'+t.n+'</b> <span class="lbl">'+t.b+'</span><div class="lbl">'+t.d+'</div></div>'+shopBtn(t)+'</div>').join(''):'<span class="lbl">Все функции куплены.</span>')+'</fieldset>'+
   '<fieldset><legend>Улучшения</legend>'+mul.map(t=>'<div class="node"><div><b>'+t.n+' · ур. '+lvl(t.id)+'</b> <span class="lbl">'+t.b+'</span><div class="lbl">'+t.d+'</div></div>'+shopBtn(t)+'</div>').join('')+'</fieldset>'}},
+ dict:{t:'Словарь',i:'rules',w:520,h:560,live:0,r(){const K=Object.entries(S.know.dict);const by={};K.forEach(([w,c])=>(by[c]=by[c]||[]).push(w));
+  return '<div class="lbl">Модуль «Определить тему» понимает только слова из словаря. Изучай частые слова: посмотри, в каких постах они встречаются, и назначь тему. Потом это можно автоматизировать модулем «Изучить слова».</div>'+
+  '<fieldset><legend>Частые незнакомые слова</legend>'+unknownWords(15).map(([w,n])=>{const h=wordHint(w);return '<div class="row"><b>'+esc(w)+'</b><span class="lbl">'+n+' постов · рядом темы: '+h.map(c=>CATS[c]).join(', ')+'</span><select id="dw_'+esc(w)+'">'+opt(CATS.map((x,j)=>[j,x]),h[0]||0)+'</select>'+B('Изучить','dset','data-w="'+esc(w)+'"')+'</div>'}).join('')+'</fieldset>'+
+  '<fieldset><legend>Словарь: '+K.length+' слов</legend>'+Object.keys(by).map(c=>'<div><b>'+CATS[c]+':</b> '+by[c].map(w=>'<span class="lw">'+esc(w)+' <a data-a="ddel" data-w="'+esc(w)+'">×</a></span>').join('')+'</div>').join('')+'</fieldset>'+
+  '<fieldset><legend>Справочник любителей тем</legend>'+(Object.keys(S.know.fans).length?Object.entries(S.know.fans).map(([c,F])=>CATS[c]+': '+Object.keys(F).length+' чел.').join(' · '):'<span class="lbl">пуст — заполняется модулем «Пополнить справочник»</span>')+'</fieldset>'}},
  goals:{t:'Цели',i:'help',w:340,h:380,r(){return GOALS.map(([id,n])=>'<div class="'+(S.goals[id]?'up':'')+'">'+(S.goals[id]?'✓':'○')+' '+n+'</div>').join('')}}};
 const pc=(L,fn)=>Math.round(L.filter(fn).length/Math.max(1,L.length)*100)+'%';
 const pct=(a,b)=>b?((a>=b?'+':'')+Math.round((a/b-1)*100)+'%'):'—';
@@ -657,8 +653,10 @@ document.addEventListener('click',e=>{const t=e.target.closest('[data-a]');if(!$
  if(a=='usel'){S.sel=+d.id;draw('users');return}
  if(a=='bpadd'){const w=$('bpwrap');const N=bpAdd(d.t,(w?w.scrollLeft:0)+40+Math.random()*120,(w?w.scrollTop:0)+30+Math.random()*120);draw('rules');return}
  if(a=='bpdel'){bpDel(+d.n);PEND=null;draw('rules');return}
- if(a=='bpout'){const N=bpNode(+d.n);if(N.o[d.o]){delete N.o[d.o];requeue()}PEND={n:+d.n,o:d.o};draw('rules');return}
- if(a=='bpin'){if(PEND){bpLink(PEND.n,PEND.o,+d.n);PEND=null;draw('rules')}return}
+ if(a=='dout'){PEND={n:+d.n,o:+d.o};draw('rules');return}
+ if(a=='din'){const N=bpNode(+d.n);if(PEND){const er=bpLink(PEND.n,PEND.o,+d.n,+d.i);if(er)toast(er);PEND=null}else if(N.in[+d.i]){N.in[+d.i]=null;requeue()}draw('rules');return}
+ if(a=='bptest'){bpTest(d.k);draw('rules');return}if(a=='bpstep'){if(TEST)TEST.step=Math.min(TEST.trace.length,TEST.step+1);draw('rules');return}if(a=='bpall'){if(TEST)TEST.step=TEST.trace.length;draw('rules');return}if(a=='bpreset'){TEST=null;draw('rules');return}
+ if(a=='dset'){S.know.dict[d.w]=+$('dw_'+d.w).value;draw('dict');return}if(a=='ddel'){delete S.know.dict[d.w];draw('dict');return}
  if(a=='bpbg'){if(PEND&&e.target.id=='bpc'||e.target.id=='bpsvg'){PEND=null;draw('rules')}return}});document.addEventListener('change',e=>{const d=e.target.dataset,el=e.target,val=el.type=='checkbox'?el.checked:el.value;
  if(d.q){Q[d.q]=val;doSearch();draw('search');return}
  if(d.uf){UF[d.uf]=d.uf=='min'?+val:val;draw('users');return}
@@ -671,10 +669,10 @@ function save(){try{const o=Object.assign({},S,{U:S.U.map(u=>Object.assign({},u,
 function loadGame(){try{const o=JSON.parse(localStorage.getItem('lenta10'));if(!o||o.v!=10)return false;S=Object.assign(BASE10(),o);UMAP.clear();PMAP.clear();S.U.forEach(u=>UMAP.set(u.id,u));S.P.concat(S.arch).forEach(p=>PMAP.set(p.id,p));S.paused=false;rerank();return true}catch(e){return false}}
 let NB=0;
 function tick(){step();stats();if(S.paused)return;Object.keys(WIN).forEach(id=>{if(WIN[id].live&&S.wins[id]&&S.wins[id].open&&!S.wins[id].min&&!(id=='feed'&&HOVER&&has('feed_pause')))draw(id)});
- if(S.t%3==0&&S.wins.rules&&S.wins.rules.open&&!S.wins.rules.min&&!PEND)draw('rules');const nb=SHOP.filter(x=>!x.lv&&shopOk(x)&&S.m>=x.p).length;if(nb>NB)icons();NB=nb;if(S.t%10==0){icons();render();save()}}
-function boot(){if(!loadGame()){init10();['feed','stats','shop','search','news','servers','ads','goals','users'].forEach(wstate);const vw=window.innerWidth;
+ if(S.t%3==0&&S.wins.rules&&S.wins.rules.open&&!S.wins.rules.min&&!PEND&&!TEST)draw('rules');const nb=SHOP.filter(x=>!x.lv&&shopOk(x)&&S.m>=x.p).length;if(nb>NB)icons();NB=nb;if(S.t%10==0){icons();render();save()}}
+function boot(){if(!loadGame()){init10();['feed','stats','shop','search','news','servers','ads','goals','users','rules','dict'].forEach(wstate);bpStarter();const vw=window.innerWidth;
   Object.assign(S.wins.feed,{x:96,y:8,open:true});Object.assign(S.wins.stats,{x:Math.min(570,vw-470),y:8,open:true});Object.assign(S.wins.shop,{x:Math.min(1050,vw-480),y:8,open:vw>1400});Object.assign(S.wins.news,{x:Math.min(570,vw-400),y:370,open:true})}
  ZT=Math.max(10,...Object.values(S.wins).map(w=>w.z||0));document.body.style.background='#008080';icons();Object.values(S.wins).forEach(fitWin);render();stats();setInterval(tick,1000)}
-(function(){const st=document.createElement('style');st.textContent='.post{display:flex;gap:6px;align-items:flex-start}.post .pc{flex:1;min-width:0}.post .txt{white-space:normal}.bigm{font-size:28px;font-weight:bold}.card.off{opacity:.5}.post{cursor:pointer}.post.upd{background:#eaffea}.post.dnd{background:#ffeaea}.dn{color:#a00}.up{color:#063}.ulist{max-height:110px;overflow:auto}.lw{display:inline-block;margin:2px;padding:1px 4px;border:1px solid #888;background:#fff;cursor:pointer;font-size:12px}.lw.on{background:#ffe680}.news a{color:#00a;cursor:pointer;text-decoration:underline}.feedbox{max-height:none}.bpwrap2{display:flex;gap:4px;flex:1;min-height:0;height:calc(100% - 26px)}.bppal{width:170px;overflow:auto;background:#fff;border:2px inset #ddd;padding:2px}.pal{padding:2px 4px;margin:1px 0;cursor:pointer;font-size:12px;border-left:4px solid #888}.pal:hover{background:#ffe680}.bpwrap{flex:1;overflow:auto;border:2px inset #ddd;background:#1e2430;background-image:radial-gradient(#39414f 1px,transparent 1px);background-size:20px 20px}.bpc{position:relative;width:2200px;height:1400px}.bpsvg{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}.bpsvg path{fill:none;stroke:#ddd;stroke-width:2.5}.bpsvg .w-yes{stroke:#5d5}.bpsvg .w-no{stroke:#e66}.bpn{position:absolute;background:#2b3240;color:#eee;border:1px solid #000;border-radius:6px;font-size:12px;box-shadow:0 2px 6px #0008}.bpn.lock{opacity:.4}.bph{padding:3px 6px;border-radius:6px 6px 0 0;cursor:move;display:flex;justify-content:space-between;font-weight:bold;color:#fff}.bph b{cursor:pointer;padding:0 3px}.g-ev .bph,.pal.g-ev{border-color:#c33}.g-ev .bph{background:#a22}.g-cond .bph{background:#2a6bb0}.g-ucond .bph{background:#7a3bb0}.g-flow .bph{background:#666}.g-act .bph{background:#2a8a4a}.g-uact .bph{background:#a07a10}.pal.g-cond{border-color:#2a6bb0}.pal.g-ucond{border-color:#7a3bb0}.pal.g-act{border-color:#2a8a4a}.pal.g-uact{border-color:#a07a10}.pal.g-flow{border-color:#666}.bpb{padding:4px 6px}.bpb input,.bpb select{font-size:11px}.bpn .lbl{color:#aab}.bpo{padding:0 0 4px}.bpor{text-align:right;padding-right:2px;height:16px}.pin{display:inline-block;width:10px;height:10px;border-radius:50%;border:2px solid #ddd;background:#2b3240;cursor:crosshair;vertical-align:middle}.pin.on{background:#ddd}.pin.pend{background:#ff0;border-color:#ff0}.pin-in{position:absolute;left:-7px;top:5px}.pin-out{margin-right:-8px}';document.head.appendChild(st)})();
+(function(){const st=document.createElement('style');st.textContent='.post{display:flex;gap:6px;align-items:flex-start}.post .pc{flex:1;min-width:0}.post .txt{white-space:normal}.bigm{font-size:28px;font-weight:bold}.card.off{opacity:.5}.post{cursor:pointer}.post.upd{background:#eaffea}.post.dnd{background:#ffeaea}.dn{color:#a00}.up{color:#063}.ulist{max-height:110px;overflow:auto}.lw{display:inline-block;margin:2px;padding:1px 4px;border:1px solid #888;background:#fff;cursor:pointer;font-size:12px}.lw.on{background:#ffe680}.news a{color:#00a;cursor:pointer;text-decoration:underline}.feedbox{max-height:none}.bpwrap2{display:flex;gap:4px;flex:1;min-height:0;height:calc(100% - 26px)}.bppal{width:170px;overflow:auto;background:#fff;border:2px inset #ddd;padding:2px}.pal{padding:2px 4px;margin:1px 0;cursor:pointer;font-size:12px;border-left:4px solid #888}.pal:hover{background:#ffe680}.bpwrap{flex:1;overflow:auto;border:2px inset #ddd;background:#1e2430;background-image:radial-gradient(#39414f 1px,transparent 1px);background-size:20px 20px}.bpc{position:relative;width:2200px;height:1400px}.bpsvg{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}.bpsvg path{fill:none;stroke:#ddd;stroke-width:2.5}.bpsvg .w-yes{stroke:#5d5}.bpsvg .w-no{stroke:#e66}.bpn{position:absolute;background:#2b3240;color:#eee;border:1px solid #000;border-radius:6px;font-size:12px;box-shadow:0 2px 6px #0008}.bpn.lock{opacity:.4}.bph{padding:3px 6px;border-radius:6px 6px 0 0;cursor:move;display:flex;justify-content:space-between;font-weight:bold;color:#fff}.bph b{cursor:pointer;padding:0 3px}.g-ev .bph,.pal.g-ev{border-color:#c33}.g-ev .bph{background:#a22}.g-cond .bph{background:#2a6bb0}.g-ucond .bph{background:#7a3bb0}.g-flow .bph{background:#666}.g-act .bph{background:#2a8a4a}.g-uact .bph{background:#a07a10}.pal.g-cond{border-color:#2a6bb0}.pal.g-ucond{border-color:#7a3bb0}.pal.g-act{border-color:#2a8a4a}.pal.g-uact{border-color:#a07a10}.pal.g-flow{border-color:#666}.bpb{padding:4px 6px}.bpr{display:flex;justify-content:space-between;align-items:center;height:18px;font-size:11px;position:relative}.bpr .pin-in{position:static;margin-left:-7px;margin-right:4px}.bpr .pin-out{margin-left:4px;margin-right:-7px}.bpr em{color:#ff8;font-style:normal;max-width:95px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle;font-size:10px}.bpr>span{white-space:nowrap}.bpn.lit{box-shadow:0 0 0 2px #ff0,0 2px 6px #0008}.g-src .bph{background:#a22}.g-data .bph{background:#7a3bb0}.g-ext .bph{background:#2a6bb0}.g-proc .bph{background:#555}.g-out .bph{background:#2a8a4a}.pal.g-src{border-color:#a22}.pal.g-data{border-color:#7a3bb0}.pal.g-ext{border-color:#2a6bb0}.pal.g-proc{border-color:#555}.pal.g-out{border-color:#2a8a4a}.bpb input,.bpb select{font-size:11px}.bpn .lbl{color:#aab}.bpo{padding:0 0 4px}.bpor{text-align:right;padding-right:2px;height:16px}.pin{display:inline-block;width:10px;height:10px;border-radius:50%;border:2px solid #ddd;background:#2b3240;cursor:crosshair;vertical-align:middle}.pin.on{background:#ddd}.pin.pend{background:#ff0;border-color:#ff0}.pin-in{position:absolute;left:-7px;top:5px}.pin-out{margin-right:-8px}';document.head.appendChild(st)})();
 if(!window.NOBOOT)boot();
 </script></body></html>
