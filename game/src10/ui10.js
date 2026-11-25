@@ -122,7 +122,7 @@ function icons(){if(!$('icons'))return;$('icons').innerHTML=Object.keys(WIN).fil
 let DRAG=null;
 document.addEventListener('pointerdown',e=>{const t=e.target.closest('[data-drag]');if(!t||e.target.closest('[data-a]'))return;const id=t.dataset.drag,s=S.wins[id];s.z=++ZT;DRAG={id,dx:e.clientX-s.x,dy:e.clientY-s.y};render();e.preventDefault()});
 document.addEventListener('pointermove',e=>{if(!DRAG)return;const s=S.wins[DRAG.id];s.x=e.clientX-DRAG.dx;s.y=e.clientY-DRAG.dy;fitWin(s);const el=$('w_'+DRAG.id);el.style.left=s.x+'px';el.style.top=s.y+'px'});
-document.addEventListener('pointerdown',e=>{const h=e.target.closest('[data-nd]');if(!h||e.target.closest('[data-a]'))return;const N=bpNode(+h.dataset.nd);BPD={N,dx:e.clientX-N.x,dy:e.clientY-N.y};e.preventDefault()});
+document.addEventListener('pointerdown',e=>{const h=e.target.closest('[data-nd]');if(!h||e.target.closest('[data-a]:not(#bpc)'))return;const N=bpNode(+h.dataset.nd);BPD={N,dx:e.clientX-N.x,dy:e.clientY-N.y};e.preventDefault()});
 document.addEventListener('pointermove',e=>{if(!BPD)return;const N=BPD.N;N.x=Math.max(0,e.clientX-BPD.dx);N.y=Math.max(0,e.clientY-BPD.dy);const el=$('bpn'+N.id);if(el){el.style.left=N.x+'px';el.style.top=N.y+'px'}bpWires()});
 document.addEventListener('pointerup',()=>{DRAG=null;BPD=null});
 window.addEventListener('resize',()=>{Object.values(S.wins).forEach(fitWin);render()});
@@ -157,7 +157,7 @@ document.addEventListener('keydown',e=>{if(e.key=='Enter'&&e.target.id=='qs'){Q.
 function stats(){$('tray').innerHTML=B(S.paused?'▶':'⏸','pause')+' '+dateStr()+' &nbsp; 💲'+f(S.m)+' (+'+f(S.incNow||0)+'/мин) &nbsp; 👥 '+fc(active()*rep())}
 // ---------- сохранение ----------
 function save(){try{const o=Object.assign({},S,{U:S.U.map(u=>Object.assign({},u,{hist:u.hist.slice(0,30)})),arch:S.arch.slice(-500)});localStorage.setItem('lenta10',JSON.stringify(o))}catch(e){}}
-function loadGame(){try{const o=JSON.parse(localStorage.getItem('lenta10'));if(!o||o.v!=10)return false;S=Object.assign(BASE10(),o);UMAP.clear();PMAP.clear();S.U.forEach(u=>UMAP.set(u.id,u));S.P.concat(S.arch).forEach(p=>PMAP.set(p.id,p));S.paused=false;rerank();return true}catch(e){return false}}
+function loadGame(){try{const o=JSON.parse(localStorage.getItem('lenta10'));if(!o||o.v!=10)return false;S=Object.assign(BASE10(),o);UMAP.clear();PMAP.clear();S.U.forEach(u=>UMAP.set(u.id,u));S.P.concat(S.arch).forEach(p=>PMAP.set(p.id,p));S.bp.nodes=S.bp.nodes.filter(n=>NT[n.t]&&n.in);S.know=S.know||{dict:{},fans:{}};bpIndex();S.paused=false;rerank();return true}catch(e){return false}}
 let NB=0;
 function tick(){step();stats();if(S.paused)return;Object.keys(WIN).forEach(id=>{if(WIN[id].live&&S.wins[id]&&S.wins[id].open&&!S.wins[id].min&&!(id=='feed'&&HOVER&&has('feed_pause')))draw(id)});
  if(S.t%3==0&&S.wins.rules&&S.wins.rules.open&&!S.wins.rules.min&&!PEND&&!TEST)draw('rules');const nb=SHOP.filter(x=>!x.lv&&shopOk(x)&&S.m>=x.p).length;if(nb>NB)icons();NB=nb;if(S.t%10==0){icons();render();save()}}
