@@ -1,0 +1,5 @@
+// настоящая игра с правилами испытаний: ветки должны проходить, лоб нет
+const M=require('./sim.js'),A=require('./auto.js'),fs=require('fs');
+function run(i,tree,seed,limit=600){const S=M.init(seed);for(let k=0;k<i;k++){S.quest=k;for(const s of M.QUESTS[k].srcs||[])if(!S.src[s])S.src[s]=3;}S.quest=i;const q=M.QUESTS[i];for(const s of q.srcs)S.src[s]=q.level;S.lv.servers=30;const G=A.compile(tree,+process.env.LV);S.lv.servers=+process.env.SV;let best=0;for(let t=0;t<limit;t++){M.step(S,G);if(S.quest>i)return{ok:true,t};if(t>60)best=Math.max(best,S.people.filter(p=>p.pk).length);}return{ok:false,best,why:q.checks(S,G).filter(c=>!c.ok).map(c=>c.label).join('; ')};}
+let bad=0;for(const q of M.QUESTS.slice(4)){if(process.argv[2]&&!process.argv.includes(q.id))continue;const i=M.QUESTS.indexOf(q),D=JSON.parse(fs.readFileSync(`dyn_${q.id}.json`));for(const seed of[7+i,41+i,93+i]){const b=run(i,D.branch,seed),n=run(i,D.head,seed);console.log(q.id,'нужно',q.need,'| ветки:',b.ok?'прошли за '+b.t+' с':'НЕТ ('+b.best+') '+b.why,'| лоб:',n.ok?'ПРОШЛА':'не прошла (лучшее '+n.best+')');if(!b.ok||n.ok)bad++;}}
+console.log('проблем',bad);

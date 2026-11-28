@@ -1,0 +1,4 @@
+const M=require('./sim.js'),A=require('./auto.js'),fs=require('fs');
+for(const ID of process.argv.slice(2)){const i=M.QUESTS.findIndex(q=>q.id===ID),q=M.QUESTS[i],D=JSON.parse(fs.readFileSync(`dyn_${ID}.json`));
+ const dyn=tree=>{const G=A.compile(tree);let n=[],sec=0,c=0;for(const seed of[81,82,83,84]){const S=M.init(seed);for(let k=0;k<i;k++)for(const s of M.QUESTS[k].srcs||[])S.src[s]=3;S.quest=i;for(const s of q.srcs)S.src[s]=q.level;S.lv.servers=30;for(let t=0;t<260;t++){M.step(S,G);S.quest=i;S.hold=0;if(t>=150&&t%5===0){n.push(S.people.filter(p=>p.pk).length);sec+=S.sec;c++;}}}return{avg:n.reduce((a,b)=>a+b,0)/n.length,sec:sec/c};};
+ const b=dyn(D.branch),h=dyn(D.head);console.log(ID,'ветки',b.avg.toFixed(1),'лоб',h.avg.toFixed(1),'время',b.sec|0,'-> порог',Math.round(h.avg+.6*(b.avg-h.avg)));}

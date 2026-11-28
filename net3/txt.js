@@ -1,0 +1,4 @@
+const M=require('./sim.js');const S=M.init(5);const G=M.start();for(let t=0;t<1500;t++)if(t%1===0)M.step(S,G);
+const by={};for(const p of S.posts){(by[p.topic]=by[p.topic]||[]).push(p);}
+for(const t of [6,7,8,9,10]){console.log('=== ',M.TOPICS[t]);for(const p of by[t].slice(0,5))console.log((p.long?'[дл] ':'')+p.text.replace(/\n/g,' ⏎ ').slice(0,300));}
+let bad=0;const all=new Set();let dup=0;for(const p of S.posts){if(/[<>{}|~]|undefined/.test(p.text))bad++,bad<4&&console.log('БРАК',p.text);if(all.has(p.text))dup++;all.add(p.text);}console.log('постов',S.posts.length,'с мусором',bad,'повторов',dup,'средняя длина длинных',Math.round(S.posts.filter(p=>p.long).reduce((a,p)=>a+p.text.length,0)/S.posts.filter(p=>p.long).length),'коротких',Math.round(S.posts.filter(p=>!p.long).reduce((a,p)=>a+p.text.length,0)/S.posts.filter(p=>!p.long).length));

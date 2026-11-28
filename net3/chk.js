@@ -1,0 +1,1 @@
+const M=require('./sim.js');const used=new Set(M.QUESTS.flatMap(q=>q.srcs||[]));console.log('испытаний',M.QUESTS.length,'источников в пачках',used.size,'из',M.SOURCES.length,'не вошли:',M.SOURCES.filter(s=>!used.has(s.id)).map(s=>s.id).join(','));

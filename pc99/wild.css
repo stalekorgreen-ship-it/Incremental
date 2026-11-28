@@ -1,0 +1,25 @@
+.wild{position:relative;min-height:100%;overflow:hidden;font-size:15px;line-height:1.4;padding:10px 10px 30px;image-rendering:pixelated}
+.f-comic{font-family:"Comic Sans MS","Comic Neue","DejaVu Sans",cursive}.f-mono{font-family:"Courier New",monospace;font-weight:700}.f-serif{font-family:"Times New Roman",serif;font-size:17px}.f-sans{font-family:Verdana,"DejaVu Sans",sans-serif}
+.wmain{position:relative;z-index:2;max-width:660px;margin:0 auto;display:flex;flex-direction:column;gap:12px;text-align:center}
+.wild a{color:var(--link);font-weight:700}
+.wstatus{display:flex;gap:10px;align-items:center;text-align:left;background:rgba(10,10,24,.82);color:#fff;border:3px ridge #b9a6ff;padding:6px 12px;font-size:13px}.mood{font-size:30px}
+.wtitle .wa{display:block;margin:0 auto;overflow:visible}.wa.wave,.wa.jump{animation:bob 1.6s ease-in-out infinite alternate}.wa.arc{animation:breathe 2.2s ease-in-out infinite alternate}
+.wild nav{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}.wild .wbtn{background:linear-gradient(#fff,#b9c0d8);color:#101050;border:3px outset #dfe4ff;padding:3px 12px;text-decoration:none;font-size:13px}.wild .wbtn.on{border-style:inset;background:#ffe62e}
+.tune{align-self:center;font-size:12px}
+.wbox{background:rgba(0,0,0,.72);color:#fff;border:4px double var(--c);padding:8px 16px;text-align:left}.wbox a{color:#ffe62e}.wbox h2,.wbox h3{color:var(--c);filter:brightness(1.25);text-align:center;margin:4px 0}.wbox p,.wbox ul{margin:8px 0}.wbox ul{padding-left:22px}.wbox .st{background:#fff}
+.wbox[style*="#fff4c2"]{background:#fff4c2;color:#5a1000;border-color:#c0141c}.wbox[style*="#ffe62e"]{background:rgba(0,30,50,.85)}
+.photos{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;align-items:flex-end}.photos figure{margin:0}.photos .face{border:5px ridge #ffd34d;background:#fff}.photos .frame{background:rgba(255,255,255,.9);border:5px ridge #c9c9ff;padding:8px}.photos figcaption{display:inline-block;background:#000;color:#fff;font-size:12px;padding:1px 8px;margin-top:3px}
+.px{display:block}
+.stick{position:absolute;z-index:1;pointer-events:none;filter:drop-shadow(3px 4px 0 rgba(0,0,0,.35))}
+.spin{animation:spin 3s steps(16) infinite}.float{animation:bob 1.8s ease-in-out infinite alternate}.sway{animation:sway 1.4s ease-in-out infinite alternate;transform-origin:50% 100%}.beat{animation:beat .8s steps(2) infinite}.blink{animation:blink .7s steps(1) infinite}.swim{animation:swim 5s ease-in-out infinite alternate}.drive{animation:drive 6s linear infinite alternate}
+@keyframes spin{to{transform:rotate(360deg)}}@keyframes bob{from{transform:translateY(-6px)}to{transform:translateY(7px)}}@keyframes breathe{to{transform:scale(1.04)}}@keyframes sway{from{transform:rotate(-12deg)}to{transform:rotate(12deg)}}@keyframes beat{50%{transform:scale(1.28)}}@keyframes blink{50%{opacity:.2}}@keyframes swim{to{transform:translate(70px,20px)}}@keyframes drive{to{transform:translateX(140px)}}
+.fire{height:34px;background-size:240px 34px;background-repeat:repeat-x;animation:burn .35s steps(3) infinite}@keyframes burn{to{background-position:240px 0}}
+.bulbs{align-self:center;background:#b01010;padding:7px;background-image:radial-gradient(circle,#fff6a0 3px,transparent 4px);background-size:16px 16px;animation:bulb .5s steps(2) infinite;max-width:100%}.bulbs span{display:block;background:#220008;color:#ffe62e;font:900 20px Impact,"Arial Black",sans-serif;letter-spacing:1px;padding:5px 18px}@keyframes bulb{to{background-position:16px 0}}
+.rainbow{height:9px;background:linear-gradient(90deg,red,orange,yellow,#2c2,#29f,#93f,red);background-size:300px 100%;animation:rain 1.2s linear infinite}@keyframes rain{to{background-position:300px 0}}
+.work{align-self:center;background:repeating-linear-gradient(45deg,#ffd400,#ffd400 14px,#111 14px,#111 28px);padding:8px;font-weight:900;color:#fff;text-shadow:0 0 4px #000,2px 2px 0 #000}
+.wild .secret{opacity:.35;text-decoration:none;cursor:default}
+.tags,.ring,.wfoot{background:rgba(0,0,0,.7);color:#fff;font-size:12px;padding:5px 10px}.tags a,.ring a{color:#8ff0ff}
+@media (prefers-reduced-motion:reduce){.wild *{animation:none!important}}
+.wbox th{background:#2a2a55;color:#fff}.wbox td{color:#111}
+.wbox[style*="#fff4c2"] h3{color:#c0141c;filter:none}
+.wild .tune{background:#ffe62e;color:#141450;border:3px outset #fff6a0;padding:2px 12px;font-weight:700;cursor:pointer}
