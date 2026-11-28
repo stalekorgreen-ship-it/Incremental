@@ -18,15 +18,17 @@ function page(url){const u=norm(url),[host,...rest]=u.split('/'),path=rest.join(
  const s=SITES.find(s=>s.host===host);const pg=s&&s.pages.find(p=>p.id===path);
  if(!pg)return{title:'Страница не найдена',html:`<div class="pg start"><h2>Не удаётся открыть страницу</h2><p>Адрес <b>${esc(u)}</b> не отвечает. Проверьте, нет ли опечатки, или попробуйте поиск.</p>${form()}<p>${link('katalog.net','Каталог сайтов')}</p></div>`};
  const visits=(O.D.guest['v:'+s.host]||(O.D.guest['v:'+s.host]=100+[...s.host].reduce((a,c)=>a*31+c.charCodeAt(0)>>>0,7)%9000));
+ const own=window.LAYOUT[s.host];if(own)return{title:s.name,site:s,wild:window.WILD[s.host],html:own(s,pg,path,visits,window.WILD[s.host])};
  if(window.WILD[s.host])return{title:s.name,site:s,wild:window.WILD[s.host],html:wildPage(s,pg,path,visits)};
- return{title:s.name,site:s,html:`<div class="site ${s.look}" style="--h:${s.col[0]};--a:${s.col[1]};--bg:${s.col[2]}"><header><h1>${s.name}</h1><i>${s.tag}</i></header>${s.look==='personal'?'<marquee scrollamount="4">★ Спасибо, что зашли! Не забудьте оставить запись в гостевой! ★</marquee>':''}<div class="body"><nav>${s.pages.filter(p=>!p.hidden).map(p=>link(s.host+(p.id?'/'+p.id:''),p.id===path?'<b>'+p.title+'</b>':p.title)).join('')}<hr>${link('katalog.net','Каталог')}</nav><main><h2>${pg.title}</h2>${pg.html}</main></div><footer>© ${s.name}, 1999 · вы посетитель № <span class="count">${String(visits).padStart(6,'0')}</span></footer></div>`};}
+ return{title:s.name,site:s,html:LOOK.site(s,pg,path,visits)};
+}
 function wildPage(s,pg,path,visits){const w=window.WILD[s.host],K=window.WILDKIT;
  const nav=s.pages.filter(p=>!p.hidden).map(p=>`<a href="#" class="wbtn${p.id===path?' on':''}" data-go="${s.host+(p.id?'/'+p.id:'')}">${p.title}</a>`).join('');
  // на главной сначала то, что сделал хозяин, потом старое содержимое
  const body=path===''?w.home+(pg.html?`<div class="wbox" style="--c:${w.link}">${pg.html}</div>`:''):`<div class="wbox" style="--c:${w.link}"><h2>${pg.title}</h2>${pg.html}</div>`;
  const ring=SITES.filter(x=>window.WILD[x.host]),i=ring.findIndex(x=>x.host===s.host),prev=ring[(i+ring.length-1)%ring.length],next=ring[(i+1)%ring.length];
- return`<div class="wild f-${w.font}" style='background:${w.bg};color:${w.ink};--link:${w.link}'>${w.stick.map(([n,sz,x,y,a])=>`<div class="stick ${a}" style="left:${x}%;top:${y}px">${K.art(n,sz)}</div>`).join('')}
- <div class="wmain"><div class="wstatus"><span class="mood">${w.status[1]}</span><div><b>${w.status[0]}</b><br>${w.status[2]}</div></div><div class="wtitle">${w.title}</div><nav>${nav}</nav><button class="tune" data-tune="${w.tune.join(',')}">♫ включить музыку страницы</button>${body}
+ return`<div class="wild f-${w.font}" style='background:${w.bg};color:${w.ink};--link:${w.link}'>${w.stick.map(([n,sz,x,y,a])=>`<div class="stick ${a}" style="left:${x}%;top:${y}px">${LOOK.stick(n,sz)}</div>`).join('')}
+ <div class="wmain"><div class="wstatus"><span class="mood">${w.status[1]}</span><div><b>${w.status[0]}</b><br>${w.status[2]}</div></div><div class="wtitle">${LOOK.title(s)}</div><div class="herorow">${LOOK.hero(s.host,130,'bob9')}</div><nav>${nav}</nav><button class="tune" data-tune="${w.tune.join(',')}">♫ включить музыку страницы</button>${body}
  <div class="tags">метки: ${w.tags.map(t=>link('nashel.net?q='+encodeURIComponent(t.split('_')[0]),t)).join(' · ')}</div>
  <div class="ring">⟨ ${link(prev.host,prev.name)} &nbsp;|&nbsp; <b>КОЛЬЦО СТРАНИЧЕК</b> &nbsp;|&nbsp; ${link(next.host,next.name)} ⟩</div>
  <div class="wfoot">вы посетитель <span class="count">${String(visits).padStart(6,'0')}</span></div></div></div>`;}
