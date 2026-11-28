@@ -140,6 +140,6 @@ const watchOf=S=>(40+80*S.acc+60*S.acc*S.acc+900*Math.pow(S.hit,2))*freshness(S.
 const capUsers=S=>Math.min(5e6,2000*Math.pow(S.watch/40,1.25)*Math.pow(1.18,S.lv.reach));
 const incomeOf=S=>(.8+Math.pow(S.users/2000,.75)*S.watch/80)*Math.pow(1.12,S.lv.ads)*(1+S.rep*.03);
 function step(S){S.t++;const w=watchOf(S);S.watch+=(w-S.watch)*.12;const cap=capUsers(S);S.users+=(cap-S.users)*(cap>S.users?.012:.03);S.income=incomeOf(S);S.money+=S.income;S.earned+=S.income;}
-const API={hash,clamp,TN,NP,HIST,FRESH,TOPN,LABELS,JOURNAL,world,raw,trueShare,BLOCKS,SLOTS,NAMES,CALC,CMP,AGG,SHOP,insOf,connect,reaches,run,resultOf,topicScore,feedScore,base,timing,speed,crowd,freshness,blockPrice,init,sourcesOf,buy,upgrade,measure,watchOf,capUsers,incomeOf,step};
+const API={OPS,hash,clamp,TN,NP,HIST,FRESH,TOPN,LABELS,JOURNAL,world,raw,trueShare,BLOCKS,SLOTS,NAMES,CALC,CMP,AGG,SHOP,insOf,connect,reaches,run,resultOf,topicScore,feedScore,base,timing,speed,crowd,freshness,blockPrice,init,sourcesOf,buy,upgrade,measure,watchOf,capUsers,incomeOf,step};
 if(typeof module!=='undefined')module.exports=API;else root.Core=API;
 })(this);
