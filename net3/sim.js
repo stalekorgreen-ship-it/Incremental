@@ -177,8 +177,8 @@ QUESTS.push({id:'funnel',kind:'пачка',title:'Удержи их',srcs:['hist
 const QUOTA=p=>p.top&&p.top.n>=10&&p.top.subs>=3&&p.top.subs<=6&&p.top.comm>=2&&p.top.comm<=5&&p.top.new>=3;
 const AWAY=p=>p.top&&(p.top.gone?p.top.here>=5:p.top.here>=2&&p.top.here<=6);
 const many=(S,f,label,need)=>{const k=S.people.filter(f).length;return chk(`${label}: ${k} из ${NP}, нужно ${need}`,k>=need,Math.min(1,k/need));};
-QUESTS.push({id:'quota',kind:'пачка',title:'Три хозяина',srcs:['subs','comm','search'],reward:1200,hold:12,goal:'Первые десять постов у человека: из подписок от 3 до 6, из его сообществ от 2 до 5, и хотя бы 3 не из подписок и не из сообществ.',checks:(S,G)=>[used(S,G,['subs','comm'],2),many(S,QUOTA,'людей, у кого первые десять такие',23),secCheck(S,600),schemeCheck(S)]});
-QUESTS.push({id:'fallback',kind:'пачка',title:'Кто уехал',srcs:['ip','trip'],reward:2000,hold:12,goal:'Кто сегодня в другом городе: в первых десяти хотя бы 5 постов оттуда. Кто дома: из своего города от 2 до 6, не меньше и не больше. У тех, кто никуда не уехал, «Поездки» пустые.',checks:(S,G)=>[used(S,G,['ip','trip'],2),many(S,AWAY,'людей, у кого с городом всё в порядке',31),secCheck(S,600),schemeCheck(S)]});
+QUESTS.push({id:'quota',good:QUOTA,kind:'пачка',title:'Три хозяина',srcs:['subs','comm','search'],reward:1200,hold:12,goal:'Первые десять постов у человека: из подписок от 3 до 6, из его сообществ от 2 до 5, и хотя бы 3 не из подписок и не из сообществ.',checks:(S,G)=>[used(S,G,['subs','comm'],2),many(S,QUOTA,'людей, у кого первые десять такие',23),secCheck(S,600),schemeCheck(S)]});
+QUESTS.push({id:'fallback',good:AWAY,kind:'пачка',title:'Кто уехал',srcs:['ip','trip'],reward:2000,hold:12,goal:'Кто сегодня в другом городе: в первых десяти хотя бы 5 постов оттуда. Кто дома: из своего города от 2 до 6, не меньше и не больше. У тех, кто никуда не уехал, «Поездки» пустые.',checks:(S,G)=>[used(S,G,['ip','trip'],2),many(S,AWAY,'людей, у кого с городом всё в порядке',31),secCheck(S,600),schemeCheck(S)]});
 // восемь пачек с правилами на первые посты: у каждой своя форма схемы, пороги подобраны автотестером
 const PACKS=(typeof require!=='undefined'?require('./packs.js'):root.makePacks)(API_H.M,API_H);
 const NEED={near:[18,1800],thin:[15,2200],hours:[17,2600],back:[40,3000],circle:[28,3500],mouth:[14,4000],love:[14,4600],trace:[11,5200]};
@@ -188,11 +188,13 @@ for(const k of PACKS){const[need,reward]=NEED[k.id];QUESTS.push({id:k.id,kind:'�
  checks:(S,G)=>[used(S,G,k.srcs,k.id==="mouth"?1:Math.min(2,k.srcs.length)),...(k.id==='back'?groups(S):[many(S,p=>p.pk,k.label,need)]),secCheck(S,90),schemeCheck(S)]});}
 
 function grant(S){const q=QUESTS[S.quest];if(q&&q.srcs)for(const i of q.srcs)if(!S.src[i]){S.ord[i]=Object.keys(S.ord).length;S.src[i]=q.level||2;S.fresh=i;}}
-function checkQuest(S,G){const q=QUESTS[S.quest];if(!q)return;const ok=q.checks(S,G).every(c=>c.ok);S.hold=ok?S.hold+1:0;if(S.hold>=q.hold){S.hold=0;S.quest++;S.money+=q.reward;S.justDone=q.id;for(const p of S.people)p.pk=false;grant(S);if(S.quest>=QUESTS.length)S.won=S.t;}}
+function checkQuest(S,G){const q=QUESTS[S.quest];if(!q)return;const ok=q.checks(S,G).every(c=>c.ok);S.hold=ok?S.hold+1:0;if(S.hold>=q.hold){S.hold=0;S.quest++;S.questAt=S.t;S.money+=q.reward;S.justDone=q.id;for(const p of S.people)p.pk=false;grant(S);if(S.quest>=QUESTS.length)S.won=S.t;}}
 //Q]
 const times=v=>Math.pow(Math.max(1,v/60),.8),daySec=v=>Math.min(14400,v*times(v));
 // что лежит в первых десяти постах у человека
 function topOf(S,p,list){const t=list.slice(0,10),tr=travel(S,p),here=tr>=0?tr:p.city,sub=x=>p.subs.includes(x.author),com=x=>x.comm>=0&&p.comms.includes(x.comm);return{n:t.length,gone:tr>=0,subs:t.filter(sub).length,comm:t.filter(com).length,new:t.filter(x=>!sub(x)&&!com(x)).length,here:t.filter(x=>x.city===here).length};}
+// пропуск застрявшего испытания: без награды, новые источники открываются
+function skip(S){if(!QUESTS[S.quest+1])return false;S.hold=0;S.quest++;S.questAt=S.t;for(const p of S.people)p.pk=false;grant(S);return true;}
 function step(S,G){S.t++;S.spawn+=2.4;while(S.spawn>=1){S.spawn--;addPost(S);}const cap=stock(S);if(S.posts.length>cap)S.posts.splice(0,S.posts.length-cap);
  const cnt={n:0},gone={n:0,k:0},stay={n:0,k:0};const ctx=ctxOf(S),load=powerLoad(S,G),pc=powerCap(S),lag=load<=pc?1:Math.pow(pc/load,1.5);let jam=null;
  for(let j=0;j<6;j++){const p=S.people[S.cursor++%NP],f=feedFor(S,G,p,ctx),v=visit(S,p,f.list,true);for(const r of v.rows){cnt.n++;for(const t of r.tags)cnt[t]=(cnt[t]||0)+1;for(const b of r.bad)cnt['!'+b[1]]=(cnt['!'+b[1]]||0)+1;}{const tr=travel(S,p),g=tr>=0?gone:stay,c=tr>=0?tr:p.city;for(const r of v.rows){g.n++;if(r.x.city===c)g.k++;if(!p.subs.includes(r.x.author)&&!(r.x.comm>=0&&p.comms.includes(r.x.comm)))cnt.new=(cnt.new||0)+1;}}p.sec=v.sec*lag;p.top=topOf(S,p,f.list);{const q=QUESTS[S.quest];p.pk=!!(q&&q.pred&&f.own>=10&&q.pred(S,p,f.list.slice(0,10),f.list));}p.why=v.why;p.k=v.k;p.own=f.own;
@@ -207,5 +209,5 @@ function step(S,G){S.t++;S.spawn+=2.4;while(S.spawn>=1){S.spawn--;addPost(S);}co
 function init(seed){const S={seed,quest:0,hold:0,ord:{},gone:0,stay:0,share:Object.fromEntries(TAGS.map(k=>[k,0])),rs:(seed*2654435761)>>>0,t:0,next:1,made:0,bag:{},posts:[],spawn:0,cursor:0,users:2000,visit:60,money:90,sec:60,best:60,income:2,src:{},lv:{servers:0,sales:0,ads:0,disk:0},why:{},mile:0,won:0,jam:null,load:0,lag:1};mkPeople(S);for(let i=0;i<260;i++){addPost(S);}grant(S);return S;}
 const start=()=>({nodes:[],wires:[],seq:1});
 const H={travel,away,today,need,spot,wantLong,slotOf,OLD};
-const API={LOCAL,H,topOf,times,daySec,OLD,QUESTS,insOf,weight,TAGS,TOPICS,CITIES,DISTRICTS,SLOTS,DAY,GOAL,NP,GROUPS,SOURCES,SRC,TYPE,FIELD,B,CAPPED,LVMAX,BAR,MILES,cover,signal,appeal,capOf,fits,connect,reaches,runFor,feedFor,visit,ctxOf,owned,buyPrice,lvPrice,buySource,nodePrice,upgrade,PRICE,MAX,buy,powerCap,powerLoad,stock,ceiling,slotOf,dayOf,weekend,travel,away,init,start,step};
+const API={skip,LOCAL,H,topOf,times,daySec,OLD,QUESTS,insOf,weight,TAGS,TOPICS,CITIES,DISTRICTS,SLOTS,DAY,GOAL,NP,GROUPS,SOURCES,SRC,TYPE,FIELD,B,CAPPED,LVMAX,BAR,MILES,cover,signal,appeal,capOf,fits,connect,reaches,runFor,feedFor,visit,ctxOf,owned,buyPrice,lvPrice,buySource,nodePrice,upgrade,PRICE,MAX,buy,powerCap,powerLoad,stock,ceiling,slotOf,dayOf,weekend,travel,away,init,start,step};
 if(typeof module!=='undefined')module.exports=API;else root.Sim=API;})(typeof window!=='undefined'?window:globalThis);

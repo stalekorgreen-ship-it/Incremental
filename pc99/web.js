@@ -65,6 +65,6 @@ function openBrowser(url){if(browser){browser.win.el.classList.remove('min');O.o
  if(browser)browser.win=win;}
 O.app('browser','Интернет',IC.web,openBrowser);
 // мост для соцсети: скачанное попадает в «Загрузки» компьютера, переходы внутри сайта видны в адресной строке
-window.PC={page:p=>browser&&browser.synced(p),download(f){const it=O.create(f.kind==='photo'?{type:'image',name:f.name.replace(/\.png$/,'.svg'),data:f.svg}:{type:'table',name:f.name,cols:f.cols,rows:f.rows},'down');return it.name;}};
+window.PC={get muted(){return!!(O.D&&O.D.settings.mute);},page:p=>browser&&browser.synced(p),download(f){const it=O.create(f.kind==='photo'?{type:'image',name:f.name.replace(/\.png$/,'.svg'),data:f.svg}:{type:'table',name:f.name,cols:f.cols,rows:f.rows},'down');return it.name;}};
 window.WEB={page,search,BOOK};
 })();

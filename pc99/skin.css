@@ -35,3 +35,5 @@ body.embedded .msg{box-shadow:var(--up);background:#dfdfdf}body.embedded .msg.b{
 body.embedded .cols{background:#c0c0c0}body.embedded .cols nav{background:#fff;box-shadow:var(--down);border:0;padding:2px}body.embedded .cols nav button{background:#fff;box-shadow:none}body.embedded .cols nav button.on{background:#000080;color:#fff}body.embedded .cols nav button.on *{color:#fff}
 body.embedded table.d th{background:#c0c0c0;box-shadow:var(--up)}
 body.embedded button.link,body.embedded button.plain{background:none;box-shadow:none}
+body.embedded #guide{box-shadow:3px 3px 0 rgba(0,0,0,.35);border-width:1px}body.embedded .party>div{border:0;box-shadow:var(--up),6px 6px 0 rgba(0,0,0,.4);background:#000080}
+@media (max-width:1200px){body.embedded #dock button{font-size:11px;padding:4px 5px;white-space:nowrap}body.embedded #dock{gap:2px;padding:3px}}

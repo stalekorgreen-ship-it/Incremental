@@ -28,8 +28,8 @@ const node=id=>G.nodes.find(n=>n.id===id);
 const nel=id=>document.querySelector(`.node[data-id="${id}"]`);
 function addNode(type,p,x,y){if(type==='feed'&&G.nodes.some(n=>n.type==='feed')){toast('Лента уже на поле','Она нужна одна.');return;}
  const st=$('#stage').getBoundingClientRect();if(x===undefined){x=(st.width*.4-V.x)/V.z;y=(st.height*.25-V.y)/V.z;while(G.nodes.some(n=>Math.abs(n.x-x)<40&&Math.abs(n.y-y)<40)){x+=45;y+=45;}}
- const n={id:'n'+(G.seq++),type,x:Math.round(x),y:Math.round(y),lv:0,p:{...(M.B[type].p||{}),...(p||{})}};G.nodes.push(n);note('add',n.id);changed();return n;}
-function delNode(id){const n=node(id);note('del',id);if(n.spent){S.money+=n.spent;toast('Деньги вернулись','+'+num(n.spent)+' ₽ за прокачку блока');}G.nodes=G.nodes.filter(m=>m!==n);G.wires=G.wires.filter(w=>w[0]!==id&&w[2]!==id);changed();}
+ remember();const n={id:'n'+(G.seq++),type,x:Math.round(x),y:Math.round(y),lv:0,p:{...(M.B[type].p||{}),...(p||{})}};G.nodes.push(n);note('add',n.id);sound('add');changed();return n;}
+function delNode(id){const n=node(id);remember(n.spent);sound('del');note('del',id);if(n.spent){S.money+=n.spent;toast('Деньги вернулись','+'+num(n.spent)+' ₽ за прокачку блока');}G.nodes=G.nodes.filter(m=>m!==n);G.wires=G.wires.filter(w=>w[0]!==id&&w[2]!==id);changed();}
 function changed(){armed=null;render();update();save();}
 const ownedList=()=>M.SOURCES.filter(s=>S.src[s.id]);
 const portType=(n,port,dir)=>(dir==='out'?M.B[n.type].outs:M.insOf(G,n)).find(i=>i[0]===port)[2];
@@ -59,15 +59,15 @@ function tidy(){const depth={},d=id=>{if(depth[id]!==undefined)return depth[id];
  const cols={};for(const n of G.nodes)(cols[depth[n.id]]=cols[depth[n.id]]||[]).push(n);let x=0;for(const k of Object.keys(cols).sort((a,b)=>a-b)){let y=0,wd=0;cols[k].sort((a,b)=>(a.type==='signal')-(b.type==='signal')||a.y-b.y);for(const n of cols[k]){const e=nel(n.id);n.x=x;n.y=y;y+=e.offsetHeight+16;wd=Math.max(wd,e.offsetWidth);}x+=wd+90;}render();update();fit();save();}
 function arm(a){armed=a;$$('.port').forEach(p=>p.classList.remove('fit','nofit','armed'));if(!a)return;const el=nel(a.id).querySelector(`.port[data-port="${a.port}"][data-dir="${a.dir}"]`);el.classList.add('armed');
  for(const p of $$('.port')){if(p.dataset.dir===a.dir)continue;const id=p.closest('.node').dataset.id,ok=id!==a.id&&(a.dir==='out'?M.fits(G,a.id,a.port,id,p.dataset.port):M.fits(G,id,p.dataset.port,a.id,a.port));p.classList.add(ok?'fit':'nofit');}}
-function join(a,b){if(a.dir===b.dir)return false;const[o,i]=a.dir==='out'?[a,b]:[b,a];if(!M.connect(G,o.id,o.port,i.id,i.port)){note('fail');toast('Не соединяется',M.fits(G,o.id,o.port,i.id,i.port)?'Получился бы круг.':'Разные виды данных: смотри на цвет кружков.');return false;}note('wire');changed();return true;}
+function join(a,b){if(a.dir===b.dir)return false;const[o,i]=a.dir==='out'?[a,b]:[b,a];remember();if(!M.connect(G,o.id,o.port,i.id,i.port)){past.pop();undoButton();note('fail');toast('Не соединяется',M.fits(G,o.id,o.port,i.id,i.port)?'Получился бы круг.':'Разные виды данных: смотри на цвет кружков.');return false;}note('wire');changed();return true;}
 const portRef=el=>({id:el.closest('.node').dataset.id,port:el.dataset.port,dir:el.dataset.dir});
 const toWorld=e=>{const r=$('#stage').getBoundingClientRect();return[(e.clientX-r.left-V.x)/V.z,(e.clientY-r.top-V.y)/V.z];};
 $('#stage').addEventListener('pointerdown',e=>{if(e.button!==0||e.target.closest('#dock,#zoom,#drawer,button,select'))return;
- const w=e.target.dataset&&e.target.dataset.wire;if(w!==undefined){G.wires.splice(+w,1);note('unwire');changed();return;}
+ const w=e.target.dataset&&e.target.dataset.wire;if(w!==undefined){remember();sound('del');G.wires.splice(+w,1);note('unwire');changed();return;}
  const port=e.target.tagName==='B'&&e.target.closest('.port');
  if(port){const ref=portRef(port);if(armed&&armed.dir!==ref.dir){const a=armed;arm(null);join(a,ref);return;}
   // занятый вход: провод снимается и тянется заново
-  if(ref.dir==='in'){const i=G.wires.findIndex(x=>x[2]===ref.id&&x[3]===ref.port);if(i>=0){const x=G.wires[i];G.wires.splice(i,1);changed();const r={id:x[0],port:x[1],dir:'out'};arm(r);drag={kind:'wire',ref:r,sx:e.clientX,sy:e.clientY};return;}}
+  if(ref.dir==='in'){const i=G.wires.findIndex(x=>x[2]===ref.id&&x[3]===ref.port);if(i>=0){remember();const x=G.wires[i];G.wires.splice(i,1);changed();const r={id:x[0],port:x[1],dir:'out'};arm(r);drag={kind:'wire',ref:r,sx:e.clientX,sy:e.clientY};return;}}
   arm(ref);drag={kind:'wire',ref,sx:e.clientX,sy:e.clientY};e.preventDefault();return;}
  const el=e.target.closest('.node');if(el){if(e.target.closest('header')){const n=node(el.dataset.id);drag={kind:'node',n,el,x:n.x,y:n.y,sx:e.clientX,sy:e.clientY};}return;}
  arm(null);drag={kind:'pan',x:V.x,y:V.y,sx:e.clientX,sy:e.clientY};});
@@ -76,8 +76,8 @@ addEventListener('pointerup',e=>{const d=drag;drag=null;if(!d)return;if(d.kind==
 $('#stage').addEventListener('wheel',e=>{if(e.target.closest('#drawer'))return;e.preventDefault();const r=$('#stage').getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top,z=Math.max(.2,Math.min(1.5,V.z*(e.deltaY<0?1.1:.9)));V.x=mx-(mx-V.x)*z/V.z;V.y=my-(my-V.y)*z/V.z;V.z=z;applyView();},{passive:false});
 $('#world').addEventListener('click',e=>{const el=e.target.closest('.node');if(!el)return;const n=node(el.dataset.id),b=e.target.closest('button');if(!b)return;
  if(b.dataset.act==='del')delNode(n.id);else if(b.dataset.act==='help')toast(M.B[n.type].title,NOTE[n.type]+(n.type==='signal'&&n.p.src?' '+M.SRC[n.p.src].help:''));
- else if(b.dataset.act==='up'){if(M.upgrade(S,G,n.id)){note('buy','block');update();save();}}
- else if(b.dataset.mode){n.p.mode=b.dataset.mode;note('set');changed();}
+ else if(b.dataset.act==='up'){if(M.upgrade(S,G,n.id)){sound('buy');note('buy','block');update();save();}}
+ else if(b.dataset.mode){remember();n.p.mode=b.dataset.mode;note('set');changed();}
  else if(b.dataset.w){const k='w'+b.dataset.w.slice(1);n.p[k]=Math.max(-3,Math.min(3,M.weight(n,b.dataset.w)+ +b.dataset.d));note('set');changed();}});
 $('#world').addEventListener('change',e=>{const k=e.target.dataset.set;if(!k)return;const n=node(e.target.closest('.node').dataset.id);n.p[k]=k==='src'?e.target.value:+e.target.value;note('set');changed();});
 // ——— нижняя панель и источники
@@ -93,7 +93,7 @@ function drawer(){if(!$('#drawer').classList.contains('on'))return;const load=M.
  M.GROUPS.forEach((g,gi)=>{if(!M.SOURCES.some(s=>s.g===gi&&PACKED.has(s.id)))return;h+=`<div class="sg">${g}</div>`;for(const s of M.SOURCES.filter(s=>s.g===gi&&PACKED.has(s.id))){const L=S.src[s.id]||0;if(!L){h+=`<div class="sr lock"><div>🔒 ${s.name}</div></div>`;continue;}const max=L>=M.LVMAX,c=max?0:M.lvPrice(S,s.id);
   h+=`<div class="sr${S.fresh===s.id?' fresh':''}"><div><b>${s.name}</b> · ур. ${L}<small>${s.help} Знает: ${Math.round(M.cover(L)*100)}%. Мощности: ${s.w}.</small></div><button data-lv="${s.id}" ${max||S.money<c?'disabled':''}>${max?'макс.':'▲ '+num(c)+' ₽'}</button><button data-put="${s.id}">на поле</button></div>`;}});
  if(h!==drawerKey){drawerKey=h;const b=$('#drawer-b'),y=b.scrollTop;b.innerHTML=h;b.scrollTop=y;}}
-$('#drawer').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.id==='drawer-x'){$('#drawer').classList.remove('on');return;}if(b.dataset.buy&&M.buy(S,b.dataset.buy))note('buy',b.dataset.buy);if(b.dataset.lv&&M.buySource(S,b.dataset.lv))note('buy',b.dataset.lv);if(b.dataset.put){$('#drawer').classList.remove('on');addNode('signal',{src:b.dataset.put});return;}drawerKey='';drawer();update();save();});
+$('#drawer').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.id==='drawer-x'){$('#drawer').classList.remove('on');return;}if(b.dataset.buy&&M.buy(S,b.dataset.buy)){sound('buy');note('buy',b.dataset.buy);}if(b.dataset.lv&&M.buySource(S,b.dataset.lv)){sound('buy');note('buy',b.dataset.lv);}if(b.dataset.put){$('#drawer').classList.remove('on');addNode('signal',{src:b.dataset.put});return;}drawerKey='';drawer();update();save();});
 $('#zoom').addEventListener('click',e=>{const z=e.target.dataset.z;if(!z)return;if(z==='fit')fit();else if(z==='tidy')tidy();else{V.z=Math.max(.2,Math.min(1.5,V.z*+z));applyView();}save();});
 // ——— правая колонка
 const WHY={history:['уже видел','История показов → «Совпадение» → «Списки» в режиме «−».'],skip:['пролистывает тему','«Пролистывания»: убери эти темы.'],nope:['не интересно','«Не интересно»: убери эти темы.'],blocks:['заблокированный автор','«Блокировки»: убери этих авторов.'],ip:['чужой город','Подними посты из города человека («IP-адрес», «Поездки»).'],geo:['не тот район','Помогают «Геометки».'],device:['длинно для телефона','Помогает «Устройство».'],clock:['не по времени суток','Помогает «Время суток».'],visit:['некогда читать','Помогает «Длина визита».'],net:['видео не грузится','Помогает «Связь».'],season:['не по сезону','Помогает «Сезон и погода».'],breaks:['старьё','Помогают «Свежесть» и «Перерывы».'],mix:['одно и то же подряд','В «Оценить» выбери «не больше двух».'],taste:['просто скучно','Лента мало знает про человека. Добавь источники вкуса или повысь их уровень.'],empty:['посты кончились','Лента отдаёт слишком мало. Убери лишнее отсеивание или расширь узкое место.']};
@@ -128,7 +128,7 @@ function diagnose(){let R=last;if(S.people.filter(p=>p.own>=12).length>=M.NP-8)r
   id=main[0];port=main[1];}
  return null;}
 function questPanel(){const q=M.QUESTS[S.quest];$('#q-n').textContent=q?`${S.quest+1} из ${M.QUESTS.length}`:'все пройдены';const open=$('#q-b details')&&$('#q-b details').open;
- let h='';if(!q)h='<h2>Всё пройдено</h2><p>Соцсеть работает. Можно строить дальше.</p>';else{const cs=q.checks(S,G),dg=diagnose();h=`${dg?`<div class="alarm">${esc(dg.text)}</div>`:''}<h2>${q.title}</h2><p>${q.goal}</p>${cs.map(c=>`<div class="check${c.ok?' ok':''}"><i>✓</i><span>${esc(c.label)}</span></div>`).join('')}${q.pred?(()=>{const p=S.people[who];return`<p class="mine${p.pk?' ok':''}">Выбранный сейчас человек, ${esc(person(p))}: ${p.pk?'✓ всё как надо':'✗ правило не выполнено'}</p>`;})():''}<div class="hold"><u style="width:${100*S.hold/q.hold}%"></u></div><p class="dim" style="font-size:11.5px">Награда ${num(q.reward)} ₽. Всё зелёное должно продержаться ${q.hold} с.${q.share?' Доля считается по тому, что люди реально увидели, и меняется плавно.':''}</p><details${open?' open':''}><summary>Подсказка</summary>${hintFor(q)}</details>`;}
+ let h='';if(!q)h='<h2>Всё пройдено</h2><p>Соцсеть работает. Можно строить дальше.</p>';else{const cs=q.checks(S,G),dg=diagnose();h=`${dg?`<div class="alarm">${esc(dg.text)}</div>`:''}<h2>${q.title}</h2><p>${q.goal}</p>${cs.map(c=>`<div class="check${c.ok?' ok':''}"><i>✓</i><span>${esc(c.label)}</span></div>`).join('')}${q.pred?(()=>{const p=S.people[who];return`<p class="mine${p.pk?' ok':''}">Выбранный сейчас человек, ${esc(person(p))}: ${p.pk?'✓ всё как надо':'✗ правило не выполнено'}</p>`;})():''}${helpHTML()}<div class="hold"><u style="width:${100*S.hold/q.hold}%"></u></div><p class="dim" style="font-size:11.5px">Награда ${num(q.reward)} ₽. Всё зелёное должно продержаться ${q.hold} с.${q.share?' Доля считается по тому, что люди реально увидели, и меняется плавно.':''}</p><details${open?' open':''}><summary>Подсказка</summary>${hintFor(q)}</details>`;}
  if(h!==questPanel.k){questPanel.k=h;$('#q-b').innerHTML=h;}}
 const topText=(p,list)=>{const t=M.topOf(S,p,list);return`<br><b>Первые ${t.n}:</b> из подписок ${t.subs}, из его сообществ ${t.comm}, ни то ни другое ${t.new}. Из города, где он сейчас, ${t.here}.<br>${t.gone?'<b>Сегодня он в другом городе.</b>':'Сегодня он дома.'}`;};
 function update(){const ctx=M.ctxOf(S),p=S.people[who];last=M.runFor(S,G,p,ctx);
@@ -146,7 +146,7 @@ function update(){const ctx=M.ctxOf(S),p=S.people[who];last=M.runFor(S,G,p,ctx);
   live.innerHTML=t;live.classList.toggle('warn',warn);
   const up=el.querySelector('.up');if(up){const max=(n.lv||0)>=20,c=max?0:M.nodePrice(G,n);up.textContent=max?'ур. 20 — максимум':`▲ ${M.capOf(n)} → ${M.capOf(n,(n.lv||0)+1)} постов · ${num(c)} ₽`;up.disabled=max||S.money<c;up.classList.toggle('can',!max&&S.money>=c);up.classList.toggle('hot',!!jam);}}
 {const dg=diagnose();$$('.node').forEach(e=>e.classList.toggle('lost',!!dg&&e.dataset.id===dg.id));}
- questPanel();
+ questPanel();guide();
  const why=Object.entries(S.why).filter(e=>e[1]>=3).sort((a,b)=>b[1]-a[1]).slice(0,5),load=M.powerLoad(S,G),pc=M.powerCap(S);
  $('#why').innerHTML=(load>pc?`<div class="alarm">Перегрузка мощностей ${load} из ${pc}: купи серверы</div>`:'')+(why.length?why.map(([k,v])=>`<div class="why"><span>${(WHY[k]||[k])[0]}</span><div><u style="width:${v}%"></u></div><span>${Math.round(v)}%</span></div>`).join('')+(WHY[why[0][0]]?`<div class="advice">${WHY[why[0][0]][1]}</div>`:''):'<p class="dim">Пока нет данных.</p>');
  const feed=G.nodes.find(n=>n.type==='feed'),own=feed&&last[feed.id].in.posts?last[feed.id].in.posts.length:0;
@@ -244,6 +244,7 @@ $('#page').addEventListener('click',e=>{const b=e.target.closest('button');if(!b
  else if(d.dl==='all'){const l=ownedList();addFile({kind:'table',name:'все_люди.csv',cols:['Человек',...l.map(s=>s.name)],rows:S.people.map(p=>[person(p),...l.map(s=>sigText({type:s.type,values:M.signal(S,s.id,p)},3))])});}
  else if(d.chat){chat=+d.chat;renderPage();}else if(d.file){fileOpen=d.file;delArm=null;renderPage(true);}
  else if(d.del){if(delArm===d.del){files=files.filter(f=>f.id!==d.del);delArm=null;fileOpen=null;$('#fcount').textContent=files.length||'';save();}else delArm=d.del;renderPage(true);}});
+/*JUICE*/
 // ——— что весело, а что нет
 function askRate(i){rateFor=i;$('#rate-t').textContent=`«${M.QUESTS[i].title}»: как было?`;$('#rate').classList.add('on');}
 $('#rate').addEventListener('click',e=>{const b=e.target.closest('[data-rate]');if(!b)return;if(b.dataset.rate)note('rate',[rateFor,b.dataset.rate]);$('#rate').classList.remove('on');save();});
@@ -262,15 +263,17 @@ $('#rep-copy').onclick=async()=>{repText();const t=$('#rep-text');let ok=false;t
 function menu(on){paused=on;$('#v-menu').classList.toggle('on',on);m2=0;$('#m-new').textContent='Начать заново';if(on)save();}
 let m2=0;$('#b-menu').onclick=()=>menu(true);$('#m-go').onclick=()=>menu(false);
 addEventListener('keydown',e=>{if(e.key==='Escape'){if(armed){arm(null);return;}if($('#v-report').classList.contains('on')){$('#rep-close').click();return;}if($('#drawer').classList.contains('on')){$('#drawer').classList.remove('on');return;}menu(!paused);}});
+$('#b-undo').onclick=undo;addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.code==='KeyZ'&&!(e.target.closest&&e.target.closest('input,textarea'))){e.preventDefault();undo();}});
+const muteText=()=>$('#m-sound').textContent=muted?'🔇 Звук выключен':'🔊 Звук включён';$('#m-sound').onclick=()=>{muted=!muted;try{localStorage.setItem('lentaos95-mute',muted?'1':'0');}catch(e){}muteText();sound('buy');};muteText();
 $('#m-new').onclick=()=>{if(!m2){m2=1;$('#m-new').textContent='Точно? Всё сотрётся';return;}fresh();boot();menu(false);};
 $('#b-speed').onclick=()=>{speed=speed===1?5:speed===5?20:1;note('speed',speed);$('#b-speed').innerHTML=`▶ ×${speed}<br><small>тест</small>`;};
-function events(){if(S.justDone){const i=M.QUESTS.findIndex(q=>q.id===S.justDone),q=M.QUESTS[i],nx=M.QUESTS[i+1];toast('Пройдено: '+q.title,`+${num(q.reward)} ₽`+(nx&&nx.srcs?` · открыты: ${nx.srcs.map(i=>M.SRC[i].name).join(', ')}`:''));S.justDone=null;Fun.log(F,'quest',i);askRate(i);if(nx&&nx.srcs)render();if(!nx){paused=true;$('#win-b').innerHTML=`<p>Все ${M.QUESTS.length} испытаний пройдены за ${Math.round(S.t/60)} мин. Открой «Отчёт о веселье» в меню и пришли его.</p><button onclick="document.getElementById('v-win').classList.remove('on');window.__resume()">Остаться в сети</button>`;$('#v-win').classList.add('on');}}
- if(S.justMile!==undefined&&S.justMile!==null){const m=M.MILES[S.justMile];toast('Премия: '+dur(m[0])+' в сети','+'+num(m[1])+' ₽');S.justMile=null;}}
+function events(){if(S.justDone){const i=M.QUESTS.findIndex(q=>q.id===S.justDone),q=M.QUESTS[i],nx=M.QUESTS[i+1];celebrate('Пройдено: '+q.title,'+'+num(q.reward)+' ₽');if(nx&&nx.srcs)toast('Открыты новые источники',nx.srcs.map(i=>M.SRC[i].name).join(', '));S.justDone=null;Fun.log(F,'quest',i);askRate(i);if(nx&&nx.srcs)render();if(!nx){paused=true;$('#win-b').innerHTML=`<p>Все ${M.QUESTS.length} испытаний пройдены за ${Math.round(S.t/60)} мин. Открой «Отчёт о веселье» в меню и пришли его.</p><button onclick="document.getElementById('v-win').classList.remove('on');window.__resume()">Остаться в сети</button>`;$('#v-win').classList.add('on');}}
+ if(S.justMile!==undefined&&S.justMile!==null){const m=M.MILES[S.justMile];sound('mile');toast('Премия: '+dur(m[0])+' в сети','+'+num(m[1])+' ₽');S.justMile=null;}}
 window.__resume=()=>paused=false;
 let acc=0,prev=performance.now();
 setInterval(()=>{const now=performance.now();const dt=Math.min(1,(now-prev)/1000);acc+=dt*speed;prev=now;if(paused||hidden){acc=0;return;}F.sec+=dt;let k=0;while(acc>=1&&k<20){M.step(S,G);events();acc--;k++;if(paused)break;}if(k){if(!drag&&!(document.activeElement&&document.activeElement.tagName==='SELECT'))update();if(now-saveAt>5000){saveAt=now;save();}}},200);
 document.addEventListener('visibilitychange',()=>{hidden=document.hidden;prev=performance.now();if(hidden)save();});addEventListener('pagehide',save);
-function boot(){$('#who').innerHTML=S.people.map(p=>`<option value="${p.i}">${person(p)}</option>`).join('');$('#who').value=who;$('#fcount').textContent=files.length||'';update.fresh=null;drawerKey='';questPanel.k='';render();go('work');update();}
+function boot(){past=[];skipArm=-1;undoButton();$('#who').innerHTML=S.people.map(p=>`<option value="${p.i}">${person(p)}</option>`).join('');$('#who').value=who;$('#fcount').textContent=files.length||'';update.fresh=null;drawerKey='';questPanel.k='';render();go('work');update();}
 if(HOST)document.body.classList.add('embedded');if(!load())fresh();F.sessions++;note('session');boot();
 window.__game={render,go,save,get S(){return S;},get G(){return G;},tidy,fit,run:n=>{for(let i=0;i<n;i++){M.step(S,G);events();}update();}};
 })();
