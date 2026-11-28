@@ -89,3 +89,9 @@ cd ../net4 && python3 build.py && node test.js
 cd ../pc99 && python3 build.py
 ```
 Браузерные тесты (`net3/t.py`, `net3/s.py`, `pc99/t.py`, `w.py`, `pcfeed.py`) требуют Playwright и локальный сервер из папки `out`: порт 8765 для net3, 8766 для pc99. `full.js` считает долго.
+
+## soc1 — «Соцсеть из деталей» (проба)
+- `soc1/core.js` — мир: действия телефонов → события → узлы игрока → таблицы; `levels.js` — испытания, сценарии, эталоны; `check.js` — проверки; `ui.js`, `shell.html`; `build.py` → `out/index.html`.
+- Все условия «Только если» на одно событие смотрят на состояние до него; стирания выполняются раньше записей.
+- Тесты: `cd soc1 && node test.js && python3 build.py`, затем сервер из `soc1/out` на 8769 и `python3 play.py`.
+
