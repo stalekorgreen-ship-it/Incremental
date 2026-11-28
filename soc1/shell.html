@@ -15,7 +15,7 @@ select,input,textarea{font:inherit;border:0;box-shadow:var(--down);background:#f
 #main{flex:1;display:flex;min-height:0}
 #stage{flex:1;position:relative;overflow:hidden;background:#008080;box-shadow:var(--down);touch-action:none;cursor:grab}
 #world{position:absolute;left:0;top:0;transform-origin:0 0}#wires{position:absolute;overflow:visible;width:1px;height:1px}
-#wires .w{fill:none;stroke:#ffd400;stroke-width:3;pointer-events:none;stroke-dasharray:9 5;animation:flow 1s linear infinite}#wires .w.tbl{stroke:#bfe0ff;stroke-dasharray:none;stroke-width:5;animation:none}@keyframes flow{to{stroke-dashoffset:-14}}
+#wires .w{fill:none;stroke:#ffd400;stroke-width:3;pointer-events:none;stroke-dasharray:9 5;animation:flow 1s linear infinite}#wires .w.k-t{stroke:#bfe0ff;stroke-dasharray:none;stroke-width:5;animation:none}#wires .w.k-s{stroke:#fff;stroke-dasharray:none;stroke-width:3;animation:none}@keyframes flow{to{stroke-dashoffset:-14}}
 #wires .hit{fill:none;stroke:transparent;stroke-width:16;cursor:pointer}#wires .hit:hover+.w{stroke:#ff5050}
 .node{position:absolute;width:236px;background:#c0c0c0;box-shadow:var(--up),3px 3px 0 rgba(0,0,0,.35);padding:3px;user-select:none}
 .node.fired{outline:4px solid #ffd400;outline-offset:2px}
@@ -26,9 +26,13 @@ select,input,textarea{font:inherit;border:0;box-shadow:var(--down);background:#f
 #zoom{position:absolute;top:6px;right:6px;display:flex;gap:2px;z-index:20}
 #dock{position:absolute;width:max-content;max-width:98%;left:50%;bottom:8px;transform:translateX(-50%);display:flex;flex-wrap:wrap;justify-content:center;gap:3px;background:#c0c0c0;box-shadow:var(--up),2px 2px 0 rgba(0,0,0,.35);padding:4px;z-index:20}#dock button{border-top:4px solid var(--c);font-weight:700;white-space:nowrap}#dock:empty{display:none}
 #empty{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);color:#fff;text-align:center;width:min(420px,90%);line-height:1.8;pointer-events:none;font-size:13px}#empty b{font-size:18px}
-#side{width:380px;flex:none;display:flex;flex-direction:column;padding:0 4px 4px;min-height:0}
-#ptabs{display:flex;gap:1px}#ptabs button{flex:1;font-weight:700}#ptabs button.on{background:#dfdfdf}.glow{animation:glow .8s ease-in-out infinite alternate}@keyframes glow{from{outline:3px solid #ffd400;outline-offset:1px}to{outline:3px solid #ff3b6b;outline-offset:3px}}
-#pbody{flex:1;overflow:auto;box-shadow:var(--down);padding:8px 10px;background:#d4d4d4}#pbody h2{font-size:16px;margin:2px 0 6px}#pbody p{margin:6px 0}
+#task,#phone{flex:none;overflow:auto;padding:8px 10px;background:#d4d4d4;box-shadow:var(--down);min-height:0}#task{width:262px}#phone{width:300px}
+#task h2,#phone h2{font-size:15px;margin:2px 0 6px}#task p,#phone p{margin:6px 0}#task .advice,#task .state{font-size:12.5px}
+.about{font-size:10.5px;color:#333;padding:2px 5px 0}
+#guide{display:none;position:absolute;left:50%;top:36px;transform:translateX(-50%);width:max-content;max-width:92%;background:#ffffe1;border:2px solid #000;padding:8px 14px;font-weight:700;font-size:14px;text-align:center;z-index:25;box-shadow:3px 3px 0 rgba(0,0,0,.35)}#guide.on{display:block}
+#legend{position:absolute;left:8px;top:8px;display:flex;flex-direction:column;color:#fff;font-size:11px;pointer-events:none;z-index:5}#legend i{display:inline-block;width:18px;height:4px;margin-right:5px;vertical-align:middle}
+.glow{animation:glow .8s ease-in-out infinite alternate}@keyframes glow{from{outline:3px solid #ffd400;outline-offset:1px}to{outline:3px solid #ff3b6b;outline-offset:3px}}
+#phone .phone{width:250px}#phone .screen{height:230px}#phone .row button{padding:3px 6px}
 .state{background:#fff;box-shadow:var(--down);padding:6px 9px;margin:6px 0}.state.ok{background:#d8f0c0}.state.bad{background:#ffe0d0}
 .advice{background:#ffffe1;border:1px solid #000;padding:5px 8px;margin:6px 0}
 .row{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0;align-items:center}.row select{flex:1}
@@ -42,14 +46,14 @@ table.d{border-collapse:collapse;width:100%;background:#fff;font-size:12px}table
 .veil{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center}.veil.on{display:flex}
 .dlg{width:min(460px,94vw);max-height:92vh;display:flex;flex-direction:column;background:#c0c0c0;box-shadow:var(--up),4px 4px 0 rgba(0,0,0,.4);padding:3px}.dlg h3{background:var(--bar);color:#fff;font-size:12px;padding:3px 7px}.dlg .body{padding:10px 12px;overflow:auto;display:flex;flex-direction:column;gap:8px}.dlg textarea{height:150px}
 .lv{display:flex;gap:6px;text-align:left}.lv span{flex:1}
-@media (max-width:1100px){#side{width:310px}}
-@media (max-width:700px){#main{flex-direction:column}#side{width:auto;height:52%}#stage{min-height:0}#top{flex-wrap:wrap}#v-title{flex-basis:100%}}
+@media (max-width:1150px){#task{width:210px}#phone{width:270px}#phone .phone{width:236px}.node{width:226px}}
+@media (max-width:800px){#main{flex-direction:column;overflow:auto}#task,#phone{width:auto;flex:none;overflow:visible}#task{max-height:38%;overflow:auto}#stage{min-height:380px;flex:none}#top{flex-wrap:wrap}#v-title{flex-basis:100%}#legend{display:none}}
 </style></head><body>
 <div id="app">
  <div id="top"><button id="b-list">Испытания</button><div class="stat" id="v-title"></div><div class="stat" id="v-stage"></div><button id="b-check">✔ Проверить</button></div>
- <div id="main">
-  <div id="stage"><div id="world"><svg id="wires"></svg></div><div id="empty"></div><div id="zoom"><button id="b-undo" title="Отменить (Ctrl+Z)">↶</button><button data-z="1.15">＋</button><button data-z="0.87">－</button><button data-z="fit">Всё поле</button><button data-z="tidy">Разложить</button></div><div id="dock"></div></div>
-  <aside id="side"><div id="ptabs"><button data-tab="task">Задача</button><button data-tab="screen">Экран</button><button data-tab="phone">Телефон</button><button data-tab="panel">Панель</button></div><div id="pbody"></div></aside>
+ <div id="main"><aside id="task"></aside>
+  <div id="stage"><div id="world"><svg id="wires"></svg></div><div id="zoom"><button id="b-undo" title="Отменить (Ctrl+Z)">↶</button><button data-z="1.15">＋</button><button data-z="0.87">－</button><button data-z="fit">Всё поле</button><button data-z="tidy">Разложить</button></div><div id="guide"></div><div id="legend"><span><i style="background:#fff"></i>что внутри чего</span><span><i style="background:#ffd400"></i>событие</span><span><i style="background:#bfe0ff"></i>таблица</span><span>провод убирается нажатием</span></div><div id="dock"></div></div>
+  <aside id="phone"></aside>
  </div></div>
 <div class="veil" id="veil"><div class="dlg"><h3 id="d-h"></h3><div class="body" id="d-b"></div></div></div>
 <script>

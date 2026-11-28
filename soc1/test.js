@@ -35,4 +35,11 @@ for(const th of ['edge','half','full'])fails('l8',mod(L('l8').ref,(S,g)=>{g('s')
 fails('l9',L('l8').ref,0,'без тишины');
 for(const N of [5,15,30,60,180]){const S=mod(L('l9').ref,(S,g)=>g('i').p.n=N);const a=run('l9',S,0),b=run('l9',S,1);ok((!a&&!b)===(N===60),`сброс ${N}: этап0 ${a?a.msg:'ок'} / этап1 ${b?b.msg:'ок'}`);
  const P=mod(S,x=>{x.G.wires.find(w=>w[2]==='reset')[2]='pause';x.G.nodes.push({id:'to',type:'ev',p:{kind:'touch'}});x.G.wires.push(['to','w','resume']);});ok(!!(run('l9',P,0)||run('l9',P,1)),'пауза '+N+' не должна проходить');}
+// перевод в модули на поле и обратно ничего не ломает
+const Graph=require('./graph.js');
+for(const l of LEVELS){const U=Graph.fromEngine(l.ref),by=Object.fromEntries(U.nodes.map(x=>[x.id,x]));
+ for(const w of U.wires)ok(Graph.canWire(by[w[0]],w[1],by[w[2]],w[3]),l.id+': провод нельзя '+w.join(' '));
+ for(const x of U.nodes)ok(x.type==='screen'||l.mods.includes(x.type)||l.start==='feed'&&['post','text','button'].includes(x.type),l.id+': блок не открыт '+x.type);
+ const E=Graph.compile(U);l.stages.forEach((st,k)=>{const f=runStage(withDef(E),st);ok(!f,l.id+' через модули, этап '+k+': '+(f&&f.msg));});}
+{const E=Graph.compile(Graph.fromEngine(L('l5').broken));ok(!!runStage(withDef(E),L('l5').stages[0]),'сломанная сеть через модули должна падать');}
 console.log(`проверок ${n}, ошибок ${bad}`);process.exit(bad?1:0);
