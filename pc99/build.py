@@ -1,9 +1,6 @@
 import json
 read=lambda f:open(f).read()
-game=read('../net3/out/index.html')
-# внутри компьютера конструктор и лента выглядят как программы той же системы
-assert '</style>' in game
-game=game.replace('</style>',read('skin.css')+'</style>',1)
+game=read('../net4/out/index.html')
 src=json.dumps(game,ensure_ascii=False).replace('</','<\\/')
 js='\n'.join(read(f) for f in ['icons.js','os.js','apps.js','sites.js','wild.js','art99.js','look.js','wildsites.js','layouts.js','web.js'])+'\nOS.boot();'
 assert '</script' not in js

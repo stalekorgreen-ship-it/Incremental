@@ -1,0 +1,84 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ЛентаОС 99 — конструктор</title><style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--up:inset -1px -1px #000,inset 1px 1px #fff,inset -2px -2px #808080,inset 2px 2px #dfdfdf;--down:inset -1px -1px #fff,inset 1px 1px #000,inset -2px -2px #dfdfdf,inset 2px 2px #808080;--thin:inset -1px -1px #fff,inset 1px 1px #808080;--bar:linear-gradient(90deg,#000080,#1084d0)}
+html,body{height:100%;overflow:hidden;font:12px/1.35 "MS Sans Serif","Microsoft Sans Serif",Tahoma,"DejaVu Sans",sans-serif;background:#c0c0c0;color:#000}
+body{display:flex;flex-direction:column}
+button{font:inherit;background:#c0c0c0;border:0;box-shadow:var(--up);padding:4px 9px;cursor:pointer;color:#000}
+button:active:not(:disabled),button.on{box-shadow:var(--down)}button:disabled{color:#808080;text-shadow:1px 1px #fff;cursor:default}
+select,input,textarea{font:inherit;border:0;box-shadow:var(--down);background:#fff;padding:3px 4px;min-width:0;color:#000}
+.dim{color:#444}[hidden]{display:none!important}
+::-webkit-scrollbar{width:16px;height:16px}::-webkit-scrollbar-track{background:repeating-conic-gradient(#fff 0 25%,#c0c0c0 0 50%) 0 0/2px 2px}::-webkit-scrollbar-thumb{background:#c0c0c0;box-shadow:var(--up)}::-webkit-scrollbar-corner{background:#c0c0c0}
+#br{display:flex;gap:3px;padding:3px 5px;align-items:center;box-shadow:inset 0 -1px #808080}#br #addr{margin-left:8px;flex:1;background:#fff;box-shadow:var(--down);padding:3px 8px}body.embedded #br{display:none}
+#app{flex:1;display:flex;flex-direction:column;min-height:0}
+#top{display:flex;gap:4px;padding:4px;align-items:stretch}
+.stat{flex:1;box-shadow:var(--down);padding:3px 8px;min-width:0;overflow:hidden;white-space:nowrap}.stat small,.stat em{display:block;font-style:normal;font-size:11px;color:#333;overflow:hidden;text-overflow:ellipsis}.stat b{font:700 17px "DejaVu Sans Mono",monospace}.stat.bad{background:#ffe0d0}
+#main{flex:1;display:flex;min-height:0}
+#stage{flex:1;position:relative;overflow:hidden;background:#008080;box-shadow:var(--down);touch-action:none;cursor:grab}
+#world{position:absolute;left:0;top:0;transform-origin:0 0}#wires{position:absolute;overflow:visible;width:1px;height:1px;z-index:0}
+#wires .w{fill:none;stroke:#ffff60;stroke-width:3;pointer-events:none;stroke-dasharray:9 5;animation:flow 1s linear infinite}@keyframes flow{to{stroke-dashoffset:-14}}#wires .w.off{stroke:#bbb;animation:none}#wires .w.temp{stroke:#fff}
+#wires .hit{fill:none;stroke:transparent;stroke-width:14;cursor:pointer}#wires .hit:hover+.w{stroke:#ff5050}
+.node{position:absolute;width:232px;background:#c0c0c0;box-shadow:var(--up),3px 3px 0 rgba(0,0,0,.35);padding:3px;cursor:default;user-select:none}
+.node.sel{outline:2px dashed #fff;outline-offset:2px}.node.slow{outline:3px solid #ff8c00;outline-offset:2px}
+.node header{display:flex;gap:2px;align-items:center;background:var(--c);color:#fff;padding:2px 2px 2px 6px;cursor:grab}.node header b{flex:1}.node header button{width:17px;height:15px;padding:0;font-size:10px;font-weight:700}
+.ports{padding:3px 0}.port{display:flex;align-items:center;gap:6px;height:19px;cursor:pointer}.port.out{justify-content:flex-end}.port b{display:block;width:13px;height:13px;border-radius:50%;background:#fff;border:3px solid var(--c);flex:none;position:relative}.port b::after{content:"";position:absolute;inset:-9px}.port.in b{margin-left:-9px}.port.out b{margin-right:-9px}.port.fit b{box-shadow:0 0 0 4px #ffff60}.port.armed b{background:#ff3b6b}
+.cfg label{display:flex;gap:5px;align-items:center;margin:3px 2px}.cfg label span{width:84px;flex:none;font-size:11px;text-align:right}.cfg select,.cfg input{flex:1;font-size:12px}.cfg p{padding:3px 5px}
+.live{background:#fff;box-shadow:var(--down);padding:3px 6px;margin-top:3px;font-size:11.5px}.live.warn{background:#ffffe1;color:#802000}
+.spd{display:flex;flex-direction:column;gap:2px;margin-top:3px}.spd span{font-size:11px;padding:0 3px}.spd button{font-size:11px}.spd button.can{background:#d8f0c0}
+#tabs,#zoom{position:absolute;top:6px;display:flex;gap:2px;z-index:20}#tabs{left:6px}#zoom{right:6px}#tabs button.on{font-weight:700;background:#dfdfdf}
+#dock{position:absolute;width:max-content;left:50%;bottom:8px;transform:translateX(-50%);display:flex;gap:3px;background:#c0c0c0;box-shadow:var(--up),2px 2px 0 rgba(0,0,0,.35);padding:4px;z-index:20;max-width:98%;flex-wrap:wrap;justify-content:center}#dock button{border-top:4px solid var(--c);font-weight:700;white-space:nowrap}
+#empty{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);color:#fff;text-align:center;max-width:420px;line-height:1.8;pointer-events:none}#empty b{font-size:19px}
+#peek{display:none;height:186px;flex:none;flex-direction:column;padding:3px;gap:3px}#peek.on{display:flex}#peek-h{display:flex;gap:6px;align-items:center}#peek-t{flex:1;font-weight:700}#peek-find{width:130px}#peek-b{flex:1;overflow:auto;background:#fff;box-shadow:var(--down);padding:2px}
+#left{flex:1;display:flex;flex-direction:column;min-width:0}
+#side{width:300px;flex:none;display:flex;flex-direction:column;padding:0 4px 4px;min-height:0}
+#moods{display:flex;gap:3px;padding-bottom:4px}#moods button{flex:1;font-size:11px;padding:3px}
+#ptabs{display:flex;gap:1px}#ptabs button{flex:1;font-weight:700}#ptabs button.on{background:#dfdfdf}#ptabs button.can::after{content:" ●";color:#0a8a20}
+#pbody{flex:1;overflow:auto;box-shadow:var(--down);padding:8px 10px;background:#d4d4d4}#pbody h2{font-size:16px;margin:2px 0 5px}#pbody p{margin:5px 0}
+.need b{background:#fff;box-shadow:var(--thin);padding:0 5px;margin-right:2px}
+.state{background:#fff;box-shadow:var(--down);padding:5px 8px;margin:6px 0;font-weight:700}.state.ok{background:#d8f0c0}
+.bar{height:13px;background:#fff;box-shadow:var(--down);padding:2px;margin:4px 0}.bar u{display:block;height:100%;background:repeating-linear-gradient(90deg,#000080 0 8px,#fff 8px 10px)}
+.advice{background:#ffffe1;border:1px solid #000;padding:5px 8px;margin:5px 0}
+.ord{box-shadow:var(--up);background:#c0c0c0;padding:7px 8px;margin:6px 0}.ord.on{background:#ffffe1}
+.srv{display:flex;gap:8px;align-items:center;margin:7px 0;box-shadow:var(--up);background:#c0c0c0;padding:6px 8px}.srv div{flex:1}.srv small{display:block;color:#333}.srv button{white-space:nowrap}
+table.d{border-collapse:collapse;font-size:11.5px;width:max-content;min-width:100%}table.d th{background:#c0c0c0;box-shadow:var(--up);padding:2px 9px;text-align:left;position:sticky;top:0}table.d td{border:1px solid #d0d0d0;padding:1px 9px}table.d td.n{text-align:right;font-family:"DejaVu Sans Mono",monospace}
+#guide{display:none;position:absolute;left:50%;top:40px;transform:translateX(-50%);max-width:min(520px,90%);width:max-content;background:#ffffe1;border:1px solid #000;padding:7px 13px;font-weight:700;text-align:center;z-index:25;box-shadow:3px 3px 0 rgba(0,0,0,.35);pointer-events:none}#guide.on{display:block}
+.glow{animation:glow .9s ease-in-out infinite alternate}@keyframes glow{from{outline:3px solid #ffd400;outline-offset:1px}to{outline:3px solid #ff3b6b;outline-offset:4px}}
+#toasts{position:fixed;right:8px;top:60px;z-index:150;display:flex;flex-direction:column;gap:5px;pointer-events:none}.toast{background:#ffffe1;border:1px solid #000;box-shadow:3px 3px 0 rgba(0,0,0,.35);padding:6px 12px;max-width:330px}.toast b{display:block}
+.party{position:fixed;inset:0;pointer-events:none;z-index:200;overflow:hidden}.party i{position:absolute;top:-12px;width:8px;height:12px;animation:fall linear forwards}@keyframes fall{to{transform:translateY(105vh) rotate(540deg)}}
+.party>div{position:absolute;left:50%;top:32%;transform:translate(-50%,-50%);background:#000080;color:#fff;box-shadow:var(--up),6px 6px 0 rgba(0,0,0,.45);padding:13px 28px;text-align:center;animation:pop .35s cubic-bezier(.2,1.8,.4,1)}.party>div b{display:block;font-size:20px}.party>div span{font-size:17px;color:#ffd400}@keyframes pop{from{transform:translate(-50%,-50%) scale(.3)}}
+#rate{display:none;position:fixed;left:8px;bottom:8px;z-index:60;background:#c0c0c0;box-shadow:var(--up),3px 3px 0 rgba(0,0,0,.35);padding:7px 9px}#rate.on{display:block}#rate div{display:flex;gap:3px;margin-top:5px}
+.veil{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center}.veil.on{display:flex}
+.dlg{width:min(440px,94vw);max-height:92vh;display:flex;flex-direction:column;background:#c0c0c0;box-shadow:var(--up),4px 4px 0 rgba(0,0,0,.4);padding:3px}.dlg.wide{width:min(860px,96vw)}.dlg h3{background:var(--bar);color:#fff;font-size:12px;padding:3px 7px}.dlg .body{padding:10px 12px;overflow:auto;display:flex;flex-direction:column;gap:8px}.dlg .body>div p{margin:5px 0}
+#page{display:none;flex:1;overflow:auto;background:#008080}#page.on{display:block}.sh{display:flex;gap:7px;align-items:center;background:#c0c0c0;padding:6px 10px;position:sticky;top:0;box-shadow:inset 0 -1px #808080;z-index:5}.sh b{font-size:15px}
+.feed{max-width:540px;margin:10px auto;background:#fff;box-shadow:var(--down);padding:4px}.feed article{padding:10px 12px;border-bottom:2px groove #dfdfdf}.feed .who{display:flex;gap:8px;align-items:center}.feed .who small{display:block;color:#555}.av{width:34px;height:34px}button.link{background:none;box-shadow:none;padding:0;color:#000080;font-weight:700}.feed p{margin:7px 0}.ph{position:relative;max-width:360px}.ph svg{display:block;width:100%}.ph button{position:absolute;right:6px;bottom:6px}.feed footer{margin-top:6px;color:#333}
+.cols{display:flex;height:calc(100% - 36px)}.cols nav{width:170px;overflow:auto;background:#fff;box-shadow:var(--down);flex:none}.cols nav button{display:block;width:100%;text-align:left;background:#fff;box-shadow:none}.cols nav button.on{background:#000080;color:#fff}.cols section{flex:1;overflow:auto;padding:10px;background:#c0c0c0}.cols section svg{max-width:420px}
+@media (max-width:1100px){#side{width:252px}.stat b{font-size:14px}#top button{padding:3px 5px}#dock button{padding:3px 6px;font-size:11px}}
+@media (prefers-reduced-motion:reduce){.party i{display:none}.glow,.party>div,#wires .w{animation:none}.glow{outline:3px solid #ff3b6b}}
+</style></head><body>
+<div id="br"><button data-page="work">Конструктор</button><button data-page="feed">Лента</button><button data-page="people">Люди</button><button data-page="chat">Переписки</button><button data-page="files">Загрузки <i id="fcount"></i></button><div id="addr"></div></div>
+<div id="page"></div>
+<div id="app">
+ <div id="top">
+  <div class="stat"><small>Людей · цель 5 000 000</small><b id="v-users"></b><em id="v-mile"></em></div>
+  <div class="stat"><small>Деньги</small><b id="v-money"></b><em id="v-income"></em></div>
+  <div class="stat"><small>Темы постов угаданы</small><b id="v-acc"></b></div>
+  <div class="stat"><small>Лента попадает во вкус</small><b id="v-hit"></b><em id="v-watch"></em></div>
+  <div class="stat"><small>Один пересчёт</small><b id="v-cycle"></b><em id="v-fresh"></em></div>
+  <button id="b-speed" title="Только для проверки прототипа">▶ ×1<br><small>тест</small></button><button id="b-menu">Меню<br><small>Esc</small></button></div>
+ <div id="main"><div id="left">
+  <div id="stage"><div id="world"><svg id="wires"></svg></div><div id="empty"></div>
+   <div id="tabs"><button data-cv="alg">Алгоритм сети</button><button data-cv="ord">Черновик заказов</button></div>
+   <div id="zoom"><button id="b-undo" title="Отменить (Ctrl+Z)">↶</button><button data-z="1.15">＋</button><button data-z="0.87">－</button><button data-z="fit">Всё поле</button><button data-z="tidy">Разложить</button></div>
+   <div id="guide"></div><div id="dock"></div></div>
+  <div id="peek"><div id="peek-h"><span id="peek-t"></span><input id="peek-find" placeholder="найти: пост, имя…" autocomplete="off"><button id="peek-dl">⬇ скачать</button><button id="peek-x">×</button></div><div id="peek-b"></div></div>
+ </div>
+ <aside id="side"><div id="moods"><button data-mood="bored">🥱 Сейчас скучно</button><button data-mood="lost">😵 Не понимаю</button></div><div id="ptabs"><button data-tab="goal">Задание</button><button data-tab="orders">Заказы</button><button data-tab="shop">Покупки</button></div><div id="pbody"></div></aside>
+ </div>
+</div>
+<div id="toasts"></div>
+<div id="rate"><b id="rate-t"></b><div><button data-rate="fun">🔥 Интересно</button><button data-rate="ok">🙂 Нормально</button><button data-rate="bored">🥱 Скучно</button><button data-rate="lost">😵 Непонятно</button><button data-rate="">×</button></div></div>
+<div class="veil" id="v-dbg"><div class="dlg wide"><h3>Разбор ошибок</h3><div class="body"><div id="dbg-b"></div><button id="dbg-x">Закрыть</button></div></div></div>
+<div class="veil" id="v-report"><div class="dlg wide"><h3>Отчёт о веселье · время стоит</h3><div class="body"><textarea id="rep-text" readonly rows="14"></textarea><button id="rep-copy">Скопировать отчёт</button><button id="rep-close">Закрыть</button></div></div></div>
+<div class="veil" id="v-menu"><div class="dlg"><h3>Время стоит · игра сохранена</h3><div class="body"><button id="m-go"><b>Продолжить</b></button><p><b>Управление.</b> Блок берётся внизу. Провод: кружок «что вышло», потом кружок входа. Нажатие по проводу убирает его. Нажатие по блоку показывает его таблицу. Ctrl+Z отменяет, Delete убирает блок. Пока игра закрыта, она стоит.</p><button id="m-sound"></button><button id="m-report">📊 Отчёт о веселье</button><button id="m-new">Начать заново</button></div></div></div>
+<script>
+/*JS*/
+</script></body></html>

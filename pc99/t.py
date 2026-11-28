@@ -50,7 +50,7 @@ with sync_playwright() as p:
     pg.click('[data-bm="lenta.net/constructor"]');pg.wait_for_timeout(1500)
     fr=pg.frames[1]
     print('встроено',fr.evaluate("document.body.classList.contains('embedded')"))
-    for t in ['all','feed']: fr.click(f'[data-add="{t}"]')
+    for t in ['src','join']: fr.click(f'[data-add="{t}"]')
     fr.evaluate('__game.run(3)');pg.screenshot(path='s_game.png')
     pg.click('[data-bm="lenta.net/feed"]');pg.wait_for_timeout(500);pg.screenshot(path='s_gfeed.png')
     if fr.locator('[data-photo]').count(): fr.locator('[data-photo]').first.click();assert cnt('down')>=1
